@@ -84,8 +84,9 @@ func (p *GojaPlugin) ClearInterrupt() {
 	if p.ui != nil {
 		p.ui.Unload(false)
 	}
-	// Clear the interrupt
+	// Close fetch channels for loader VM to prevent goroutine leaks
 	if p.loader != nil {
+		goja_bindings.CloseFetch(p.loader)
 		p.loader.ClearInterrupt()
 	}
 	// Stop the store
@@ -169,6 +170,9 @@ func NewGojaPlugin(
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Register cleanup function to close fetch channels when pool is destroyed
+	p.pool.RegisterCleanup(goja_bindings.CloseFetch)
 
 	//////// UI
 

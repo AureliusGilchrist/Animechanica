@@ -12,6 +12,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// CleanupFunc is called when a runtime is being destroyed to clean up resources.
+// This is used to close fetch channels and other resources bound to the VM.
+type CleanupFunc func(vm *goja.Runtime)
+
 // Manager manages a shared pool of Goja runtimes for all extensions.
 type Manager struct {
 	pluginPools *result.Map[string, *Pool]
@@ -20,11 +24,12 @@ type Manager struct {
 }
 
 type Pool struct {
-	sp      sync.Pool
-	factory func() *goja.Runtime
-	logger  *zerolog.Logger
-	size    int32
-	metrics metrics
+	sp         sync.Pool
+	factory    func() *goja.Runtime
+	logger     *zerolog.Logger
+	size       int32
+	metrics    metrics
+	cleanupFns []CleanupFunc
 }
 
 // metrics holds counters for pool stats.
@@ -75,13 +80,18 @@ func (m *Manager) DeletePluginPool(extID string) {
 				break // No more runtimes in the pool or error occurred
 			}
 
-			runtime, ok := runtimeV.(*goja.Runtime)
+			vm, ok := runtimeV.(*goja.Runtime)
 			if !ok {
 				break
 			}
 
+			// Run cleanup functions (e.g., close fetch channels)
+			for _, cleanup := range pool.cleanupFns {
+				cleanup(vm)
+			}
+
 			// Interrupt the runtime
-			runtime.ClearInterrupt()
+			vm.ClearInterrupt()
 			interruptedCount++
 		}
 
@@ -91,6 +101,11 @@ func (m *Manager) DeletePluginPool(extID string) {
 	// Delete the pool
 	m.pluginPools.Delete(extID)
 	runtime.GC()
+}
+
+// RegisterCleanup registers a cleanup function to be called when VMs in the pool are destroyed.
+func (p *Pool) RegisterCleanup(fn CleanupFunc) {
+	p.cleanupFns = append(p.cleanupFns, fn)
 }
 
 // GetOrCreateSharedPool returns the shared pool.

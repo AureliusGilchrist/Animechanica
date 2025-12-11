@@ -20,12 +20,18 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
 	lop "github.com/samber/lo/parallel"
 	"gorm.io/gorm"
 )
+
+// animeEntryCache provides short-lived caching for anime entries to reduce
+// repeated processing when rapidly opening multiple tabs.
+// TTL is short (30s) to ensure data freshness while reducing load.
+var animeEntryCache = result.NewCache[int, *anime.Entry]()
 
 func (h *Handler) getAnimeEntry(c echo.Context, lfs []*anime.LocalFile, mId int) (*anime.Entry, error) {
 	// Get the host anime library files
@@ -125,6 +131,11 @@ func (h *Handler) HandleGetAnimeEntry(c echo.Context) error {
 		return h.RespondWithError(c, err)
 	}
 
+	// Check short-lived cache first to reduce load when rapidly opening tabs
+	if cachedEntry, ok := animeEntryCache.Get(mId); ok {
+		return h.RespondWithData(c, cachedEntry)
+	}
+
 	// Get all the local files
 	lfs, _, err := db_bridge.GetLocalFiles(h.App.Database)
 	if err != nil {
@@ -135,6 +146,9 @@ func (h *Handler) HandleGetAnimeEntry(c echo.Context) error {
 	if err != nil {
 		return h.RespondWithError(c, err)
 	}
+
+	// Cache for 30 seconds to handle rapid tab opening
+	animeEntryCache.SetT(mId, entry, 30*time.Second)
 
 	return h.RespondWithData(c, entry)
 }

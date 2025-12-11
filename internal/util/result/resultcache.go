@@ -3,11 +3,13 @@ package result
 import (
 	"seanime/internal/constants"
 	"seanime/internal/util"
+	"sync"
 	"time"
 )
 
 type Cache[K interface{}, V any] struct {
-	store util.RWMutexMap
+	store       util.RWMutexMap
+	cleanupOnce sync.Once
 }
 
 type cacheItem[K interface{}, V any] struct {
@@ -19,21 +21,42 @@ func NewCache[K interface{}, V any]() *Cache[K, V] {
 	return &Cache[K, V]{}
 }
 
+// startCleanup starts a single background goroutine that periodically removes expired entries.
+// This is called lazily on first Set to avoid spawning goroutines for unused caches.
+func (c *Cache[K, V]) startCleanup() {
+	c.cleanupOnce.Do(func() {
+		go func() {
+			// Cleanup interval: check every 1/10th of GcTime, minimum 1 minute
+			interval := constants.GcTime / 10
+			if interval < time.Minute {
+				interval = time.Minute
+			}
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for range ticker.C {
+				now := time.Now()
+				c.store.Range(func(key, value interface{}) bool {
+					if ci, ok := value.(*cacheItem[K, V]); ok {
+						if now.After(ci.expiration) {
+							c.store.Delete(key)
+						}
+					}
+					return true
+				})
+			}
+		}()
+	})
+}
+
 func (c *Cache[K, V]) Set(key K, value V) {
 	ttl := constants.GcTime
 	c.store.Store(key, &cacheItem[K, V]{value, time.Now().Add(ttl)})
-	go func() {
-		<-time.After(ttl)
-		c.Delete(key)
-	}()
+	c.startCleanup()
 }
 
 func (c *Cache[K, V]) SetT(key K, value V, ttl time.Duration) {
 	c.store.Store(key, &cacheItem[K, V]{value, time.Now().Add(ttl)})
-	go func() {
-		<-time.After(ttl)
-		c.Delete(key)
-	}()
+	c.startCleanup()
 }
 
 func (c *Cache[K, V]) Get(key K) (V, bool) {

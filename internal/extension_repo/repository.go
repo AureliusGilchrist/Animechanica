@@ -27,8 +27,11 @@ type (
 		logger         *zerolog.Logger
 		fileCacher     *filecache.Cacher
 		wsEventManager events.WSEventManagerInterface
-		// Absolute path to the directory containing all extensions
+		// Absolute path to the directory containing user-specific extensions
 		extensionDir string
+		// Absolute path to the global extensions directory (shared across all users)
+		// If empty, only the user-specific directory is used
+		globalExtensionDir string
 		// Store all active Goja VMs
 		// - When reloading extensions, all VMs are interrupted
 		gojaExtensions *result.Map[string, GojaExtension]
@@ -108,12 +111,13 @@ type (
 )
 
 type NewRepositoryOptions struct {
-	Logger           *zerolog.Logger
-	ExtensionDir     string
-	WSEventManager   events.WSEventManagerInterface
-	FileCacher       *filecache.Cacher
-	HookManager      hook.Manager
-	ExtensionBankRef *util.Ref[*extension.UnifiedBank]
+	Logger             *zerolog.Logger
+	ExtensionDir       string
+	GlobalExtensionDir string // Optional: shared extensions directory for all users
+	WSEventManager     events.WSEventManagerInterface
+	FileCacher         *filecache.Cacher
+	HookManager        hook.Manager
+	ExtensionBankRef   *util.Ref[*extension.UnifiedBank]
 }
 
 func NewRepository(opts *NewRepositoryOptions) *Repository {
@@ -121,9 +125,15 @@ func NewRepository(opts *NewRepositoryOptions) *Repository {
 	// Make sure the extension directory exists
 	_ = os.MkdirAll(opts.ExtensionDir, os.ModePerm)
 
+	// Make sure the global extension directory exists (if specified)
+	if opts.GlobalExtensionDir != "" {
+		_ = os.MkdirAll(opts.GlobalExtensionDir, os.ModePerm)
+	}
+
 	ret := &Repository{
 		logger:             opts.Logger,
 		extensionDir:       opts.ExtensionDir,
+		globalExtensionDir: opts.GlobalExtensionDir,
 		wsEventManager:     opts.WSEventManager,
 		gojaExtensions:     result.NewMap[string, GojaExtension](),
 		gojaRuntimeManager: goja_runtime.NewManager(opts.Logger),

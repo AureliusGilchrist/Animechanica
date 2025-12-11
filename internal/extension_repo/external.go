@@ -514,6 +514,8 @@ func (r *Repository) unloadExternalExtensions() {
 
 // loadExternalExtensions loads all external extensions from the extension directory.
 // This should be called after the built-in extensions are loaded.
+// If a global extension directory is configured, extensions from there are loaded first,
+// then user-specific extensions are loaded (which can override global ones).
 func (r *Repository) loadExternalExtensions() {
 	r.logger.Trace().Msg("extensions: Loading external extensions")
 
@@ -524,9 +526,36 @@ func (r *Repository) loadExternalExtensions() {
 	r.unloadExternalExtensions()
 
 	//
-	// Load external extensions
+	// Load global extensions first (if configured)
 	//
+	if r.globalExtensionDir != "" {
+		r.logger.Debug().Str("dir", r.globalExtensionDir).Msg("extensions: Loading global extensions")
+		err := filepath.WalkDir(r.globalExtensionDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				r.logger.Error().Err(err).Msg("extensions: Failed to walk global directory")
+				return err
+			}
 
+			if d.IsDir() {
+				return nil
+			}
+
+			// Check if the file is a .json file
+			if filepath.Ext(path) != ".json" {
+				return nil
+			}
+
+			r.loadExternalExtension(path)
+			return nil
+		})
+		if err != nil {
+			r.logger.Error().Err(err).Msg("extensions: Failed to load global extensions")
+		}
+	}
+
+	//
+	// Load user-specific extensions (can override global ones)
+	//
 	err := filepath.WalkDir(r.extensionDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			r.logger.Error().Err(err).Msg("extensions: Failed to walk directory")

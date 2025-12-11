@@ -6,6 +6,7 @@ import (
 	"seanime/internal/database/db"
 	"seanime/internal/events"
 	"seanime/internal/extension"
+	goja_bindings "seanime/internal/goja/goja_bindings"
 	"seanime/internal/plugin"
 	"seanime/internal/util"
 	goja_util "seanime/internal/util/goja"
@@ -93,6 +94,8 @@ func (u *UI) UnloadFromInside(signalDestroyed bool) {
 	if u.destroyed {
 		return
 	}
+	// Close fetch channel to prevent goroutine leaks
+	goja_bindings.CloseFetch(u.vm)
 	// Stop the VM
 	u.vm.ClearInterrupt()
 	// Unsubscribe from client all events

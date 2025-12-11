@@ -274,12 +274,13 @@ func NewApp(configOpts *ConfigOptions, selfupdater *updater.SelfUpdater) *App {
 
 	// Initialize extension repository
 	extensionRepository := extension_repo.NewRepository(&extension_repo.NewRepositoryOptions{
-		Logger:           logger,
-		ExtensionDir:     cfg.Extensions.Dir,
-		WSEventManager:   wsEventManager,
-		FileCacher:       fileCacher,
-		HookManager:      hookManager,
-		ExtensionBankRef: extensionBankRef,
+		Logger:             logger,
+		ExtensionDir:       cfg.Extensions.Dir,
+		GlobalExtensionDir: cfg.Extensions.GlobalDir, // Optional: shared extensions for all users
+		WSEventManager:     wsEventManager,
+		FileCacher:         fileCacher,
+		HookManager:        hookManager,
+		ExtensionBankRef:   extensionBankRef,
 	})
 
 	// Initialize metadata provider for media information

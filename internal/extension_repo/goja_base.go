@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"seanime/internal/events"
 	"seanime/internal/extension"
+	goja_bindings "seanime/internal/goja/goja_bindings"
 	"seanime/internal/goja/goja_runtime"
 	"seanime/internal/plugin"
 	goja_util "seanime/internal/util/goja"
@@ -83,6 +84,9 @@ func initializeProviderBase(
 	if err != nil {
 		return nil, err
 	}
+
+	// Register cleanup function to close fetch channels when pool is destroyed
+	pool.RegisterCleanup(goja_bindings.CloseFetch)
 
 	providerBase.pool = pool
 

@@ -35,6 +35,7 @@ type Fetch struct {
 	vm           *goja.Runtime
 	fetchSem     chan struct{}
 	vmResponseCh chan func()
+	closed       bool
 }
 
 func NewFetch(vm *goja.Runtime) *Fetch {
@@ -50,6 +51,10 @@ func (f *Fetch) ResponseChannel() <-chan func() {
 }
 
 func (f *Fetch) Close() {
+	if f.closed {
+		return
+	}
+	f.closed = true
 	defer func() {
 		if r := recover(); r != nil {
 		}
@@ -72,24 +77,45 @@ type fetchResult struct {
 	json     interface{}
 }
 
-// BindFetch binds the fetch function to the VM
+// BindFetch binds the fetch function to the VM.
+// The returned Fetch instance should have Close() called when the VM is no longer needed
+// to prevent goroutine leaks.
 func BindFetch(vm *goja.Runtime) *Fetch {
 	// Create a new Fetch instance
 	f := NewFetch(vm)
 	_ = vm.Set("fetch", f.Fetch)
+	// Store the Fetch instance in the VM for later cleanup
+	_ = vm.Set("__fetch_instance__", f)
 
 	go func() {
 		for fn := range f.ResponseChannel() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Warn().Msgf("extension: response channel panic: %v", r)
-				}
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Warn().Msgf("extension: response channel panic: %v", r)
+					}
+				}()
+				fn()
 			}()
-			fn()
 		}
 	}()
 
 	return f
+}
+
+// CloseFetch closes the Fetch instance stored in the VM.
+// This should be called when the VM is being destroyed to prevent goroutine leaks.
+func CloseFetch(vm *goja.Runtime) {
+	if vm == nil {
+		return
+	}
+	fetchVal := vm.Get("__fetch_instance__")
+	if fetchVal == nil || goja.IsUndefined(fetchVal) || goja.IsNull(fetchVal) {
+		return
+	}
+	if f, ok := fetchVal.Export().(*Fetch); ok && f != nil {
+		f.Close()
+	}
 }
 
 func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {

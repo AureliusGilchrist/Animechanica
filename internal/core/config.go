@@ -50,7 +50,8 @@ type Config struct {
 		WorkingDir string
 	}
 	Extensions struct {
-		Dir string
+		Dir       string
+		GlobalDir string // Optional global extensions directory shared across all users
 	}
 	Anilist struct {
 		ClientID string
@@ -140,6 +141,7 @@ func NewConfig(options *ConfigOptions, logger *zerolog.Logger) (*Config, error) 
 	viper.SetDefault("offline.dir", "$SEANIME_DATA_DIR/offline")
 	viper.SetDefault("offline.assetDir", "$SEANIME_DATA_DIR/offline/assets")
 	viper.SetDefault("extensions.dir", "$SEANIME_DATA_DIR/extensions")
+	viper.SetDefault("extensions.globalDir", "") // Optional: set to a path to share extensions globally
 
 	// Create and populate the config file if it doesn't exist
 	if err = createConfigFile(configPath); err != nil {
