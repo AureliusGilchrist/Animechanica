@@ -421,7 +421,7 @@ func (r *Registry) save(queueInfo *QueueInfo, destination string, logger *zerolo
 }
 
 func (cd *Downloader) getChapterDownloadDir(downloadId DownloadID) string {
-	return filepath.Join(cd.downloadDir, FormatChapterDirName(downloadId.Provider, downloadId.MediaId, downloadId.ChapterId, downloadId.ChapterNumber, downloadId.ChapterTitle, downloadId.ChapterIndex))
+	return filepath.Join(cd.downloadDir, FormatChapterDirName(downloadId.Provider, downloadId.MediaId, downloadId.ChapterId, downloadId.ChapterNumber, downloadId.DisplayChapterNumber, downloadId.ChapterTitle, downloadId.ChapterIndex))
 }
 
 // ReadChapterMetadata reads the metadata.json file from a chapter directory.
@@ -441,18 +441,15 @@ func ReadChapterMetadata(chapterDir string) *ChapterMetadata {
 	return &metadata
 }
 
-func FormatChapterDirName(provider string, mediaId int, chapterId string, chapterNumber string, chapterTitle string, chapterIndex uint) string {
-	// Format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}_{sanitizedTitle}
-	// Include sanitized title for easier identification in file browser
-	sanitizedTitle := sanitizeForFilesystem(chapterTitle)
-	if sanitizedTitle == "" {
-		sanitizedTitle = fmt.Sprintf("Chapter_%s", chapterNumber)
+func FormatChapterDirName(provider string, mediaId int, chapterId string, chapterNumber string, displayChapterNumber string, chapterTitle string, chapterIndex uint) string {
+	// Format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}_Chapter_{displayNumber}
+	// Use displayChapterNumber for the readable part (e.g., "Chapter_50.5")
+	chapterLabel := fmt.Sprintf("Chapter_%s", displayChapterNumber)
+	// Limit length to avoid overly long folder names
+	if len(chapterLabel) > 50 {
+		chapterLabel = chapterLabel[:50]
 	}
-	// Limit title length to avoid overly long folder names
-	if len(sanitizedTitle) > 50 {
-		sanitizedTitle = sanitizedTitle[:50]
-	}
-	return fmt.Sprintf("%s_%d_%s_%s_%s", provider, mediaId, EscapeChapterID(chapterId), chapterNumber, sanitizedTitle)
+	return fmt.Sprintf("%s_%d_%s_%s_%s", provider, mediaId, EscapeChapterID(chapterId), chapterNumber, chapterLabel)
 }
 
 // sanitizeForFilesystem removes or replaces characters that are invalid in filenames

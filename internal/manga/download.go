@@ -211,9 +211,15 @@ func (d *Downloader) DownloadChapter(opts DownloadChapterOptions) error {
 	// Add the chapter to the download queue
 	// Calculate chapter number based on position in the full chapter list
 	chapterNumber := calculateChapterNumber(chapter.Chapter, chapter.Index, chapterContainer)
-	// Use the calculated chapter number for UI display as well
-	// This shows the true position (e.g., "652" instead of "235" for "Group 3 Chapter 235")
+	// For display: use calculated index + decimal part for decimals (e.g., index 50 + ".5" = "50.5")
 	displayChapterNumber := chapterNumber
+	if strings.Contains(chapter.Chapter, ".") {
+		// Get the decimal part from the original chapter number
+		parts := strings.Split(chapter.Chapter, ".")
+		if len(parts) == 2 {
+			displayChapterNumber = chapterNumber + "." + parts[1] // e.g., "50" + "." + "5" = "50.5"
+		}
+	}
 
 	d.logger.Debug().
 		Str("provider", opts.Provider).
@@ -509,10 +515,26 @@ func (d *Downloader) hydrateMediaMap() {
 }
 
 // calculateChapterNumber determines the chapter number for a downloaded chapter's folder name.
-// Uses chapterIndex + 1 to get the correct position (1-indexed).
-// This ensures correct ordering regardless of the chapter naming scheme (e.g., "Group X Chapter Y").
+// For decimal chapters, uses the integer part of the original number.
+// For non-decimal chapters, uses index + 1 minus the count of decimal chapters before this one.
 func calculateChapterNumber(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
-	// Use index + 1 as the chapter number (1-indexed)
-	// Index 0 = Chapter 1, Index 1 = Chapter 2, etc.
-	return fmt.Sprintf("%d", chapterIndex+1)
+	// For decimal chapters (e.g., "50.5"), use the integer part for folder naming
+	if strings.Contains(originalChapter, ".") {
+		parts := strings.Split(originalChapter, ".")
+		return parts[0]
+	}
+
+	// Count decimal chapters that come before this chapter's index
+	decimalsBefore := 0
+	for i, ch := range container.Chapters {
+		if uint(i) >= chapterIndex {
+			break
+		}
+		if strings.Contains(ch.Chapter, ".") {
+			decimalsBefore++
+		}
+	}
+
+	// For non-decimal chapters, use index + 1 minus decimals before
+	return fmt.Sprintf("%d", int(chapterIndex)+1-decimalsBefore)
 }

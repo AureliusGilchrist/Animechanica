@@ -12,6 +12,7 @@ import (
 	chapter_downloader "seanime/internal/manga/downloader"
 	manga_providers "seanime/internal/manga/providers"
 	"slices"
+	"strings"
 
 	"github.com/goccy/go-json"
 )
@@ -173,9 +174,17 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 				for _, dir := range chapterDirs {
 					// Calculate chapter number using same logic as download
 					chapterNumber := calculateChapterNumberForMatch(chapter.Chapter, chapter.Index, container)
-					expectedFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapterNumber, chapter.Title, chapter.Index)
+					// Calculate display chapter number (index + decimal part for decimals)
+					displayChapterNumber := chapterNumber
+					if strings.Contains(chapter.Chapter, ".") {
+						parts := strings.Split(chapter.Chapter, ".")
+						if len(parts) == 2 {
+							displayChapterNumber = chapterNumber + "." + parts[1]
+						}
+					}
+					expectedFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapterNumber, displayChapterNumber, chapter.Title, chapter.Index)
 					// Also check with original chapter number for backwards compatibility
-					oldFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter, chapter.Title, chapter.Index)
+					oldFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter, chapter.Chapter, chapter.Title, chapter.Index)
 					if dir == expectedFormat || dir == oldFormat {
 						downloadedContainer.Chapters = append(downloadedContainer.Chapters, chapter)
 						break
@@ -328,9 +337,25 @@ func (r *Repository) getDownloadedMangaPageContainer(
 }
 
 // calculateChapterNumberForMatch calculates the chapter number for matching downloaded chapters.
-// Same logic as calculateChapterNumber in download.go - uses index + 1.
+// Same logic as calculateChapterNumber in download.go.
 func calculateChapterNumberForMatch(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
-	// Use index + 1 as the chapter number (1-indexed)
-	// Index 0 = Chapter 1, Index 1 = Chapter 2, etc.
-	return fmt.Sprintf("%d", chapterIndex+1)
+	// For decimal chapters (e.g., "50.5"), use the integer part for folder naming
+	if strings.Contains(originalChapter, ".") {
+		parts := strings.Split(originalChapter, ".")
+		return parts[0]
+	}
+
+	// Count decimal chapters that come before this chapter's index
+	decimalsBefore := 0
+	for i, ch := range container.Chapters {
+		if uint(i) >= chapterIndex {
+			break
+		}
+		if strings.Contains(ch.Chapter, ".") {
+			decimalsBefore++
+		}
+	}
+
+	// For non-decimal chapters, use index + 1 minus decimals before
+	return fmt.Sprintf("%d", int(chapterIndex)+1-decimalsBefore)
 }
