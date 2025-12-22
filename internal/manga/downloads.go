@@ -183,9 +183,11 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 						}
 					}
 					expectedFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapterNumber, displayChapterNumber, chapter.Title, chapter.Index)
-					// Also check with original chapter number for backwards compatibility
-					oldFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter, chapter.Chapter, chapter.Title, chapter.Index)
-					if dir == expectedFormat || dir == oldFormat {
+					// Check for old format for backwards compatibility
+					// Match by checking if dir contains the escaped chapter ID
+					escapedChapterId := chapter_downloader.EscapeChapterID(chapter.ID)
+					// Check: new format, or dir contains escaped chapter ID (for any old format)
+					if dir == expectedFormat || strings.Contains(dir, escapedChapterId) {
 						downloadedContainer.Chapters = append(downloadedContainer.Chapters, chapter)
 						break
 					}

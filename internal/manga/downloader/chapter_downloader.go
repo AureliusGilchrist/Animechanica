@@ -470,47 +470,32 @@ func sanitizeForFilesystem(name string) string {
 }
 
 // ParseChapterDirName parses a chapter directory name and returns the DownloadID.
-// New format: {provider}_{mediaId}_{escapedChapterId}_{index}_{escapedTitle}
-// Old format (backwards compatible): {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
+// Format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}_{title...}
+// The title may contain underscores, so we join remaining parts.
 func ParseChapterDirName(dirName string) (id DownloadID, ok bool) {
 	parts := strings.Split(dirName, "_")
 
-	// New format has 5 parts: provider, mediaId, chapterId, index, title
-	if len(parts) == 5 {
-		id.Provider = parts[0]
-		var err error
-		id.MediaId, err = strconv.Atoi(parts[1])
-		if err != nil {
-			return id, false
-		}
-		id.ChapterId = UnescapeChapterID(parts[2])
-		index, err := strconv.ParseUint(parts[3], 10, 32)
-		if err != nil {
-			return id, false
-		}
-		id.ChapterIndex = uint(index)
-		id.ChapterTitle = UnescapeChapterID(parts[4])
-		// Extract chapter number from title if possible (e.g., "Chapter 1" -> "1")
-		id.ChapterNumber = extractChapterNumber(id.ChapterTitle)
-		ok = true
-		return
+	// Need at least 4 parts: provider, mediaId, chapterId, chapterNumber
+	if len(parts) < 4 {
+		return id, false
 	}
 
-	// Old format has 4 parts: provider, mediaId, chapterId, chapterNumber (backwards compatibility)
-	if len(parts) == 4 {
-		id.Provider = parts[0]
-		var err error
-		id.MediaId, err = strconv.Atoi(parts[1])
-		if err != nil {
-			return id, false
-		}
-		id.ChapterId = UnescapeChapterID(parts[2])
-		id.ChapterNumber = parts[3]
-		ok = true
-		return
+	id.Provider = parts[0]
+	var err error
+	id.MediaId, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return id, false
+	}
+	id.ChapterId = UnescapeChapterID(parts[2])
+	id.ChapterNumber = parts[3]
+
+	// If there are more parts, join them as the title
+	if len(parts) > 4 {
+		id.ChapterTitle = strings.Join(parts[4:], "_")
 	}
 
-	return id, false
+	ok = true
+	return
 }
 
 // extractChapterNumber tries to extract a chapter number from a title string
