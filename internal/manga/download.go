@@ -516,9 +516,15 @@ func (d *Downloader) hydrateMediaMap() {
 }
 
 // calculateChapterNumber determines the chapter number for a downloaded chapter's folder name.
-// All chapters use consistent index-based numbering: index + 1 - decimals before.
-// For decimal chapters, this returns the same base number as the preceding non-decimal chapter.
+// For decimal chapters, uses the integer part of the original number.
+// For non-decimal chapters, uses index + 1 minus the count of decimal chapters before this one.
 func calculateChapterNumber(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
+	// For decimal chapters (e.g., "50.5"), use the integer part for folder naming
+	if strings.Contains(originalChapter, ".") {
+		parts := strings.Split(originalChapter, ".")
+		return parts[0]
+	}
+
 	// Count decimal chapters that come before this chapter's index
 	decimalsBefore := 0
 	for i, ch := range container.Chapters {
@@ -530,11 +536,6 @@ func calculateChapterNumber(originalChapter string, chapterIndex uint, container
 		}
 	}
 
-	// For decimal chapters, also subtract 1 more since they share the base number with the previous chapter
-	if strings.Contains(originalChapter, ".") {
-		decimalsBefore++
-	}
-
-	// Calculate chapter number: index + 1 minus decimals before (including self if decimal)
+	// For non-decimal chapters, use index + 1 minus decimals before
 	return fmt.Sprintf("%d", int(chapterIndex)+1-decimalsBefore)
 }
