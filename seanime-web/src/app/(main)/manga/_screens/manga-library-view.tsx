@@ -27,6 +27,7 @@ import { BiDotsVertical } from "react-icons/bi"
 import { LuBookOpenCheck, LuRefreshCcw } from "react-icons/lu"
 import { toast } from "sonner"
 import { CommandItemMedia } from "../../_features/sea-command/_components/command-utils"
+import { MangaToReadList } from "../_containers/manga-to-read-list"
 
 type MangaLibraryViewProps = {
     collection: Manga_Collection
@@ -136,6 +137,9 @@ export function CollectionLists({ collectionList, genres, storedProviders, showS
                 },
             }}
         >
+            {/* To Read List at the top */}
+            <MangaToReadList collection={collectionList} type={type} />
+
             {lists?.map(collection => {
                 if (!collection.entries?.length) return null
                 return (

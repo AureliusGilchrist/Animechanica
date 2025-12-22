@@ -12,6 +12,7 @@ type BoundedCache[K comparable, V any] struct {
 	capacity int
 	items    map[K]*list.Element
 	order    *list.List
+	timers   map[K]*time.Timer // Track expiration timers for cleanup
 }
 
 type boundedCacheItem[K comparable, V any] struct {
@@ -26,6 +27,7 @@ func NewBoundedCache[K comparable, V any](capacity int) *BoundedCache[K, V] {
 		capacity: capacity,
 		items:    make(map[K]*list.Element),
 		order:    list.New(),
+		timers:   make(map[K]*time.Timer),
 	}
 }
 
@@ -46,27 +48,32 @@ func (c *BoundedCache[K, V]) SetT(key K, value V, ttl time.Duration) {
 		expiration: expiration,
 	}
 
+	// Cancel existing timer if key already exists
+	if timer, exists := c.timers[key]; exists {
+		timer.Stop()
+		delete(c.timers, key)
+	}
+
 	// If key already exists, update it and move to front
 	if elem, exists := c.items[key]; exists {
 		elem.Value = item
 		c.order.MoveToFront(elem)
-		return
+	} else {
+		// If at capacity, remove oldest item
+		if len(c.items) >= c.capacity {
+			c.evictOldest()
+		}
+
+		// Add new item to front
+		elem := c.order.PushFront(item)
+		c.items[key] = elem
 	}
 
-	// If at capacity, remove oldest item
-	if len(c.items) >= c.capacity {
-		c.evictOldest()
-	}
-
-	// Add new item to front
-	elem := c.order.PushFront(item)
-	c.items[key] = elem
-
-	// Set up expiration cleanup
-	go func() {
-		<-time.After(ttl)
+	// Set up expiration cleanup with a timer (can be cancelled)
+	timer := time.AfterFunc(ttl, func() {
 		c.Delete(key)
-	}()
+	})
+	c.timers[key] = timer
 }
 
 // Get retrieves an item from the cache and marks it as recently used
@@ -124,6 +131,11 @@ func (c *BoundedCache[K, V]) delete(key K) {
 		c.order.Remove(elem)
 		delete(c.items, key)
 	}
+	// Cancel the expiration timer if it exists
+	if timer, exists := c.timers[key]; exists {
+		timer.Stop()
+		delete(c.timers, key)
+	}
 }
 
 // Clear removes all items from the cache
@@ -131,6 +143,11 @@ func (c *BoundedCache[K, V]) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Cancel all expiration timers
+	for _, timer := range c.timers {
+		timer.Stop()
+	}
+	c.timers = make(map[K]*time.Timer)
 	c.items = make(map[K]*list.Element)
 	c.order.Init()
 }

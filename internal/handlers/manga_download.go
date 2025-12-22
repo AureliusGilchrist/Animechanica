@@ -206,5 +206,16 @@ func (h *Handler) HandleGetMangaDownloadsList(c echo.Context) error {
 		return h.RespondWithError(c, err)
 	}
 
+	// Fetch missing media info for items not in the collection (e.g., adult manga)
+	for _, item := range res {
+		if item.Media == nil {
+			// Try to fetch the media info from AniList directly
+			mediaRes, err := h.App.AnilistClientRef.Get().BaseMangaByID(c.Request().Context(), &item.MediaId)
+			if err == nil && mediaRes != nil && mediaRes.GetMedia() != nil {
+				item.Media = mediaRes.GetMedia()
+			}
+		}
+	}
+
 	return h.RespondWithData(c, res)
 }

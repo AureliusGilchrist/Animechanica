@@ -250,7 +250,7 @@ func (m *WSEventManager) OnClientEvent(event *WebsocketClientEvent) {
 
 func (m *WSEventManager) SubscribeToClientEvents(id string) *ClientEventSubscriber {
 	subscriber := &ClientEventSubscriber{
-		Channel: make(chan *WebsocketClientEvent, 900),
+		Channel: make(chan *WebsocketClientEvent, 10000),
 	}
 	m.clientEventSubscribers.Set(id, subscriber)
 	return subscriber
@@ -258,7 +258,7 @@ func (m *WSEventManager) SubscribeToClientEvents(id string) *ClientEventSubscrib
 
 func (m *WSEventManager) SubscribeToClientNativePlayerEvents(id string) *ClientEventSubscriber {
 	subscriber := &ClientEventSubscriber{
-		Channel: make(chan *WebsocketClientEvent, 100),
+		Channel: make(chan *WebsocketClientEvent, 10000),
 	}
 	m.clientNativePlayerEventSubscribers.Set(id, subscriber)
 	return subscriber
@@ -266,7 +266,7 @@ func (m *WSEventManager) SubscribeToClientNativePlayerEvents(id string) *ClientE
 
 func (m *WSEventManager) SubscribeToClientNakamaEvents(id string) *ClientEventSubscriber {
 	subscriber := &ClientEventSubscriber{
-		Channel: make(chan *WebsocketClientEvent, 100),
+		Channel: make(chan *WebsocketClientEvent, 10000),
 	}
 	m.nakamaEventSubscribers.Set(id, subscriber)
 	return subscriber
@@ -274,7 +274,7 @@ func (m *WSEventManager) SubscribeToClientNakamaEvents(id string) *ClientEventSu
 
 func (m *WSEventManager) SubscribeToClientPlaylistEvents(id string) *ClientEventSubscriber {
 	subscriber := &ClientEventSubscriber{
-		Channel: make(chan *WebsocketClientEvent, 100),
+		Channel: make(chan *WebsocketClientEvent, 10000),
 	}
 	m.playlistEventSubscribers.Set(id, subscriber)
 	return subscriber

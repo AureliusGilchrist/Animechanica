@@ -57,6 +57,8 @@ type (
 		MediaId       int    `json:"mediaId"`
 		ChapterId     string `json:"chapterId"`
 		ChapterNumber string `json:"chapterNumber"`
+		ChapterTitle  string `json:"chapterTitle"` // Title from the source (e.g., "Group 2 Chapter 1")
+		ChapterIndex  uint   `json:"chapterIndex"` // Index from the source for ordering
 	}
 
 	//+-------------------------------------------------------------------------------------------------------------------+
@@ -95,6 +97,7 @@ func NewDownloader(opts *NewDownloaderOptions) *Downloader {
 	d := &Downloader{
 		logger:              opts.Logger,
 		wsEventManager:      opts.WSEventManager,
+		database:            opts.Database,
 		downloadDir:         opts.DownloadDir,
 		cancelChannels:      make(map[DownloadID]chan struct{}),
 		runCh:               runCh,
@@ -106,7 +109,13 @@ func NewDownloader(opts *NewDownloaderOptions) *Downloader {
 }
 
 // Start spins up a goroutine that will listen to queue events.
+// It also resumes any interrupted downloads from a previous session.
 func (cd *Downloader) Start() {
+	// Reset any items that were "downloading" when the app was stopped
+	// This handles sudden shutdowns where the queue wasn't properly stopped
+	_ = cd.database.ResetDownloadingChapterDownloadQueueItems()
+
+	// Start the listener goroutine
 	go func() {
 		for {
 			select {
@@ -117,6 +126,12 @@ func (cd *Downloader) Start() {
 			}
 		}
 	}()
+
+	// Auto-resume the queue if there are pending items
+	if cd.database.HasPendingChapterDownloadQueueItems() {
+		cd.logger.Info().Msg("chapter downloader: Resuming download queue from previous session")
+		cd.Run()
+	}
 }
 
 func (cd *Downloader) ChapterDownloaded() <-chan DownloadID {
@@ -380,32 +395,98 @@ func (r *Registry) save(queueInfo *QueueInfo, destination string, logger *zerolo
 }
 
 func (cd *Downloader) getChapterDownloadDir(downloadId DownloadID) string {
-	return filepath.Join(cd.downloadDir, FormatChapterDirName(downloadId.Provider, downloadId.MediaId, downloadId.ChapterId, downloadId.ChapterNumber))
+	return filepath.Join(cd.downloadDir, FormatChapterDirName(downloadId.Provider, downloadId.MediaId, downloadId.ChapterId, downloadId.ChapterNumber, downloadId.ChapterTitle, downloadId.ChapterIndex))
 }
 
-func FormatChapterDirName(provider string, mediaId int, chapterId string, chapterNumber string) string {
+func FormatChapterDirName(provider string, mediaId int, chapterId string, chapterNumber string, chapterTitle string, chapterIndex uint) string {
+	// Use the original format for folder names: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
+	// This ensures the app can properly recognize downloaded chapters
 	return fmt.Sprintf("%s_%d_%s_%s", provider, mediaId, EscapeChapterID(chapterId), chapterNumber)
 }
 
+// sanitizeForFilesystem removes or replaces characters that are invalid in filenames
+func sanitizeForFilesystem(name string) string {
+	// Replace invalid filesystem characters with safe alternatives
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "",
+		"?", "",
+		"\"", "'",
+		"<", "",
+		">", "",
+		"|", "-",
+	)
+	return replacer.Replace(name)
+}
+
 // ParseChapterDirName parses a chapter directory name and returns the DownloadID.
-// e.g. comick_1234_chapter$UNDERSCORE$id_13.5 -> {Provider: "comick", MediaId: 1234, ChapterId: "chapter_id", ChapterNumber: "13.5"}
+// New format: {provider}_{mediaId}_{escapedChapterId}_{index}_{escapedTitle}
+// Old format (backwards compatible): {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
 func ParseChapterDirName(dirName string) (id DownloadID, ok bool) {
 	parts := strings.Split(dirName, "_")
-	if len(parts) != 4 {
-		return id, false
+
+	// New format has 5 parts: provider, mediaId, chapterId, index, title
+	if len(parts) == 5 {
+		id.Provider = parts[0]
+		var err error
+		id.MediaId, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return id, false
+		}
+		id.ChapterId = UnescapeChapterID(parts[2])
+		index, err := strconv.ParseUint(parts[3], 10, 32)
+		if err != nil {
+			return id, false
+		}
+		id.ChapterIndex = uint(index)
+		id.ChapterTitle = UnescapeChapterID(parts[4])
+		// Extract chapter number from title if possible (e.g., "Chapter 1" -> "1")
+		id.ChapterNumber = extractChapterNumber(id.ChapterTitle)
+		ok = true
+		return
 	}
 
-	id.Provider = parts[0]
-	var err error
-	id.MediaId, err = strconv.Atoi(parts[1])
-	if err != nil {
-		return id, false
+	// Old format has 4 parts: provider, mediaId, chapterId, chapterNumber (backwards compatibility)
+	if len(parts) == 4 {
+		id.Provider = parts[0]
+		var err error
+		id.MediaId, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return id, false
+		}
+		id.ChapterId = UnescapeChapterID(parts[2])
+		id.ChapterNumber = parts[3]
+		ok = true
+		return
 	}
-	id.ChapterId = UnescapeChapterID(parts[2])
-	id.ChapterNumber = parts[3]
 
-	ok = true
-	return
+	return id, false
+}
+
+// extractChapterNumber tries to extract a chapter number from a title string
+func extractChapterNumber(title string) string {
+	// Try to find "Chapter X" or "Ch. X" pattern
+	title = strings.ToLower(title)
+	for _, prefix := range []string{"chapter ", "ch. ", "ch "} {
+		if idx := strings.Index(title, prefix); idx != -1 {
+			rest := title[idx+len(prefix):]
+			// Extract the number part
+			var num strings.Builder
+			for _, c := range rest {
+				if (c >= '0' && c <= '9') || c == '.' {
+					num.WriteRune(c)
+				} else if num.Len() > 0 {
+					break
+				}
+			}
+			if num.Len() > 0 {
+				return num.String()
+			}
+		}
+	}
+	return ""
 }
 
 func EscapeChapterID(id string) string {

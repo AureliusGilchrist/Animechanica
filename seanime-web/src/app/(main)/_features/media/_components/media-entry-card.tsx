@@ -52,6 +52,7 @@ import { IoLibrarySharp } from "react-icons/io5"
 import { LuDownload, LuEye, LuFolderTree } from "react-icons/lu"
 import { RiCalendarLine } from "react-icons/ri"
 import { PluginMediaCardContextMenuItems } from "../../plugin/actions/plugin-actions"
+import { MediaEntryCardDownloadButton } from "./media-entry-card-download-button"
 
 type MediaEntryCardBaseProps = {
     overlay?: React.ReactNode
@@ -71,6 +72,7 @@ type MediaEntryCardProps<T extends "anime" | "manga"> = {
     nakamaLibraryData?: T extends "anime" ? Anime_NakamaEntryLibraryData : never
     hideUnseenCountBadge?: boolean
     hideAnilistEntryEditButton?: boolean
+    showDownloadButton?: T extends "anime" ? boolean : never
     onClick?: () => void
 } & MediaEntryCardBaseProps
 
@@ -88,6 +90,7 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
         withAudienceScore = true,
         hideUnseenCountBadge = false,
         hideAnilistEntryEditButton = false,
+        showDownloadButton,
         onClick,
     } = props
 
@@ -308,6 +311,14 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
 
                             {(type === "anime" && !!libraryData) &&
                                 <ToggleLockFilesButton mediaId={media.id} allFilesLocked={libraryData.allFilesLocked} />}
+
+                            {/* Download button - only show if not in library and showDownloadButton is true */}
+                            {(type === "anime" && showDownloadButton && !libraryData && !downloadStatus.isActive) &&
+                                <MediaEntryCardDownloadButton
+                                    mediaId={media.id}
+                                    isInLibrary={!!libraryData}
+                                    isDownloading={downloadStatus.isDownloading}
+                                />}
 
                             {!hideAnilistEntryEditButton && <AnilistMediaEntryModal listData={listData} media={media} type={type} forceModal />}
 

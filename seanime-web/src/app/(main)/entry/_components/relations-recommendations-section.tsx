@@ -66,6 +66,7 @@ export function RelationsRecommendationsSection(props: RelationsRecommendationsS
                                         : capitalize(edge.relationType || "").replace("_", " ")}</p>}
                                     showLibraryBadge
                                     showTrailer
+                                    showDownloadButton
                                     type="anime"
                                 />
                             </div>
@@ -82,6 +83,7 @@ export function RelationsRecommendationsSection(props: RelationsRecommendationsS
                                 media={media!}
                                 showLibraryBadge
                                 showTrailer
+                                showDownloadButton
                                 type="anime"
                             />
                         </div>

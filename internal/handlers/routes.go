@@ -389,6 +389,12 @@ func InitRoutes(app *core.App, e *echo.Echo) {
 
 	v1Manga.GET("/local-page/:path", h.HandleGetLocalMangaPage)
 
+	// To Read List
+	v1Manga.GET("/to-read", h.HandleGetMangaToReadList)
+	v1Manga.POST("/to-read", h.HandleAddMangaToReadItem)
+	v1Manga.DELETE("/to-read", h.HandleRemoveMangaToReadItem)
+	v1Manga.POST("/to-read/check", h.HandleIsMangaInToReadList)
+
 	//
 	// File Cache
 	//

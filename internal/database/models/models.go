@@ -376,6 +376,15 @@ type Playlist struct {
 }
 
 // +------------------------+
+// |    Manga To Read List  |
+// +------------------------+
+
+type MangaToReadItem struct {
+	BaseModel
+	MediaID int `gorm:"column:media_id;uniqueIndex" json:"mediaId"`
+}
+
+// +------------------------+
 // | Chapter Download Queue |
 // +------------------------+
 
@@ -385,7 +394,9 @@ type ChapterDownloadQueueItem struct {
 	MediaID       int    `gorm:"column:media_id" json:"mediaId"`
 	ChapterID     string `gorm:"column:chapter_id" json:"chapterId"`
 	ChapterNumber string `gorm:"column:chapter_number" json:"chapterNumber"`
-	PageData      []byte `gorm:"column:page_data" json:"pageData"` // Contains map of page index to page details
+	ChapterTitle  string `gorm:"column:chapter_title" json:"chapterTitle"`   // Title from the source (e.g., "Group 2 Chapter 1")
+	ChapterIndex  uint   `gorm:"column:chapter_index" json:"chapterIndex"`   // Index from the source for ordering
+	PageData      []byte `gorm:"column:page_data" json:"pageData"`           // Contains map of page index to page details
 	Status        string `gorm:"column:status" json:"status"`
 }
 
@@ -455,6 +466,14 @@ type TorrentPreMatch struct {
 	BaseModel
 	Destination string `gorm:"column:destination;index" json:"destination"` // The download destination path
 	MediaId     int    `gorm:"column:media_id" json:"mediaId"`              // The AniList media ID
+}
+
+// TorrentMediaAssociation stores the association between a torrent info hash and the anime media ID.
+// This allows tracking download progress for specific anime without relying on path matching.
+type TorrentMediaAssociation struct {
+	BaseModel
+	InfoHash string `gorm:"column:info_hash;uniqueIndex" json:"infoHash"` // The torrent info hash
+	MediaId  int    `gorm:"column:media_id;index" json:"mediaId"`         // The AniList media ID
 }
 
 // +---------------------+

@@ -10,6 +10,7 @@ import (
 	hibiketorrent "seanime/internal/extension/hibike/torrent"
 	"seanime/internal/torrent_clients/torrent_client"
 	"seanime/internal/util"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -279,6 +280,21 @@ func (h *Handler) HandleTorrentClientDownload(c echo.Context) error {
 				Str("destination", b.Destination).
 				Msg("torrent client: Saved torrent pre-match for accurate file matching")
 		}
+
+		// Save torrent hash -> media ID associations for download badge tracking
+		for _, t := range b.Torrents {
+			if t.InfoHash != "" {
+				err = h.App.Database.SaveTorrentMediaAssociation(t.InfoHash, b.Media.ID)
+				if err != nil {
+					h.App.Logger.Warn().Err(err).Str("hash", t.InfoHash).Msg("torrent client: Failed to save torrent-media association")
+				} else {
+					h.App.Logger.Debug().
+						Int("mediaId", b.Media.ID).
+						Str("hash", t.InfoHash).
+						Msg("torrent client: Saved torrent-media association for download tracking")
+				}
+			}
+		}
 	}
 
 	// Add the media to the collection (if it wasn't already)
@@ -386,6 +402,7 @@ func (h *Handler) HandleClearTorrentPreMatches(c echo.Context) error {
 //
 //	@summary returns the download status of media items that are currently downloading.
 //	@desc This handler returns a map of media IDs to their download status based on active torrents.
+//	@desc Uses hash-based lookup for fast O(1) matching of torrents to anime.
 //	@route /api/v1/torrent-client/media-downloading-status [GET]
 //	@returns []MediaDownloadStatus
 func (h *Handler) HandleGetMediaDownloadingStatus(c echo.Context) error {
@@ -398,40 +415,54 @@ func (h *Handler) HandleGetMediaDownloadingStatus(c echo.Context) error {
 		return h.RespondWithData(c, result)
 	}
 
-	// Get all pre-matches
-	preMatches, err := h.App.Database.GetAllTorrentPreMatches()
-	if err != nil {
+	// Early return if no torrents
+	if len(torrents) == 0 {
 		return h.RespondWithData(c, result)
 	}
 
-	// Create a map of destination paths to media IDs
-	destToMediaId := make(map[string]int)
-	for _, pm := range preMatches {
-		destToMediaId[util.NormalizePath(pm.Destination)] = pm.MediaId
+	// Get all torrent-media associations (hash-based, O(1) lookup)
+	associations, err := h.App.Database.GetAllTorrentMediaAssociations()
+	hashToMediaId := make(map[string]int)
+	if err == nil {
+		for _, assoc := range associations {
+			hashToMediaId[strings.ToLower(assoc.InfoHash)] = assoc.MediaId
+		}
 	}
 
-	// Track which media IDs we've already added (to avoid duplicates)
-	addedMediaIds := make(map[int]bool)
+	// Track the best status for each media (in case multiple torrents match)
+	mediaStatus := make(map[int]*MediaDownloadStatus)
 
-	// Match torrents to media IDs based on content path
+	// First pass: Match torrents using hash-based lookup (fast, O(1) per torrent)
 	for _, torrent := range torrents {
-		contentPath := util.NormalizePath(torrent.ContentPath)
-
-		// Check if the torrent's content path matches any pre-match destination
-		for destPath, mediaId := range destToMediaId {
-			// Check if content path starts with or equals the destination path
-			if len(contentPath) >= len(destPath) && contentPath[:len(destPath)] == destPath {
-				if !addedMediaIds[mediaId] {
-					result = append(result, MediaDownloadStatus{
-						MediaId:  mediaId,
-						Status:   torrent.Status,
-						Progress: torrent.Progress,
-					})
-					addedMediaIds[mediaId] = true
+		hash := strings.ToLower(torrent.Hash)
+		if mediaId, found := hashToMediaId[hash]; found {
+			existing, exists := mediaStatus[mediaId]
+			if !exists {
+				mediaStatus[mediaId] = &MediaDownloadStatus{
+					MediaId:  mediaId,
+					Status:   torrent.Status,
+					Progress: torrent.Progress,
 				}
-				break
+			} else {
+				// If we already have this media, update with the most relevant status
+				// Priority: downloading > paused > seeding
+				// Also update progress to the lowest (most incomplete) if downloading
+				if torrent.Status == torrent_client.TorrentStatusDownloading {
+					if existing.Status != torrent_client.TorrentStatusDownloading {
+						existing.Status = torrent.Status
+						existing.Progress = torrent.Progress
+					} else if torrent.Progress < existing.Progress {
+						existing.Progress = torrent.Progress
+					}
+				}
 			}
 		}
+	}
+
+	// Convert map to slice
+	result = make([]MediaDownloadStatus, 0, len(mediaStatus))
+	for _, status := range mediaStatus {
+		result = append(result, *status)
 	}
 
 	return h.RespondWithData(c, result)

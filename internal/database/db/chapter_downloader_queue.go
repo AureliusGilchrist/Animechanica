@@ -8,7 +8,7 @@ import (
 
 func (db *Database) GetChapterDownloadQueue() ([]*models.ChapterDownloadQueueItem, error) {
 	var res []*models.ChapterDownloadQueueItem
-	err := db.gormdb.Find(&res).Error
+	err := db.gormdb.Order("id ASC").Find(&res).Error
 	if err != nil {
 		db.Logger.Error().Err(err).Msg("db: Failed to get chapter download queue")
 		return nil, err
@@ -19,7 +19,7 @@ func (db *Database) GetChapterDownloadQueue() ([]*models.ChapterDownloadQueueIte
 
 func (db *Database) GetNextChapterDownloadQueueItem() (*models.ChapterDownloadQueueItem, error) {
 	var res models.ChapterDownloadQueueItem
-	err := db.gormdb.Where("status = ?", "not_started").First(&res).Error
+	err := db.gormdb.Where("status = ?", "not_started").Order("id ASC").First(&res).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			db.Logger.Error().Err(err).Msg("db: Failed to get next chapter download queue item")
@@ -132,4 +132,17 @@ func (db *Database) ResetDownloadingChapterDownloadQueueItems() error {
 		return err
 	}
 	return nil
+}
+
+// HasPendingChapterDownloadQueueItems returns true if there are any items in the queue
+// that are not errored (i.e., not_started or downloading).
+func (db *Database) HasPendingChapterDownloadQueueItems() bool {
+	var count int64
+	err := db.gormdb.Model(&models.ChapterDownloadQueueItem{}).
+		Where("status = ? OR status = ?", "not_started", "downloading").
+		Count(&count).Error
+	if err != nil {
+		return false
+	}
+	return count > 0
 }

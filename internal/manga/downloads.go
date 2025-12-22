@@ -171,7 +171,13 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 			for _, chapter := range container.Chapters {
 				// For each chapter, check if the chapter directory exists
 				for _, dir := range chapterDirs {
-					if dir == chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter) {
+					// Use Index+1 as chapter number (same as download logic)
+					chapterNumber := fmt.Sprintf("%d", chapter.Index+1)
+					// Check standard format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
+					expectedFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapterNumber, chapter.Title, chapter.Index)
+					// Also check old format using original chapter number for backwards compatibility
+					oldFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter, chapter.Title, chapter.Index)
+					if dir == expectedFormat || dir == oldFormat {
 						downloadedContainer.Chapters = append(downloadedContainer.Chapters, chapter)
 						break
 					}

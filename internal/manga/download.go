@@ -10,7 +10,6 @@ import (
 	"seanime/internal/events"
 	"seanime/internal/hook"
 	chapter_downloader "seanime/internal/manga/downloader"
-	manga_providers "seanime/internal/manga/providers"
 	"seanime/internal/util"
 	"seanime/internal/util/filecache"
 	"sync"
@@ -208,12 +207,27 @@ func (d *Downloader) DownloadChapter(opts DownloadChapterOptions) error {
 	}
 
 	// Add the chapter to the download queue
+	// Use Index+1 as the chapter number to ensure uniqueness across groups
+	// e.g., "Chapter 1" (index 0) -> "1", "Group 2 Chapter 1" (index 1) -> "2"
+	chapterNumber := fmt.Sprintf("%d", chapter.Index+1)
+
+	d.logger.Debug().
+		Str("provider", opts.Provider).
+		Int("mediaId", opts.MediaId).
+		Str("chapterId", opts.ChapterId).
+		Str("chapterTitle", chapter.Title).
+		Str("chapterNumber", chapterNumber).
+		Uint("chapterIndex", chapter.Index).
+		Msg("manga downloader: Adding chapter to queue")
+
 	return d.chapterDownloader.AddToQueue(chapter_downloader.DownloadOptions{
 		DownloadID: chapter_downloader.DownloadID{
 			Provider:      opts.Provider,
 			MediaId:       opts.MediaId,
 			ChapterId:     opts.ChapterId,
-			ChapterNumber: manga_providers.GetNormalizedChapter(chapter.Chapter),
+			ChapterNumber: chapterNumber,
+			ChapterTitle:  chapter.Title, // Use the title from the source
+			ChapterIndex:  chapter.Index, // Use the index from the source for ordering
 		},
 		Pages: pageContainer.Pages,
 	})

@@ -18,7 +18,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
-	lop "github.com/samber/lo/parallel"
 )
 
 type Scanner struct {
@@ -180,7 +179,9 @@ func (scn *Scanner) Scan(ctx context.Context) (lfs []*anime.LocalFile, err error
 	}
 
 	// Create local files from paths (skipping skipped files)
-	localFiles = lop.Map(paths, func(path string, _ int) *anime.LocalFile {
+	// Note: Using sequential lo.Map instead of parallel lop.Map because habari.Parse()
+	// compiles regexes on every call, causing OOM when processing many files in parallel.
+	localFiles = lo.Map(paths, func(path string, _ int) *anime.LocalFile {
 		if _, ok := skippedLfs[util.NormalizePath(path)]; !ok {
 			// Create a new local file
 			return anime.NewLocalFileS(path, libraryPaths)

@@ -1309,6 +1309,44 @@ export const API_ENDPOINTS = {
             endpoint: "/api/v1/manga/downloads",
         },
     },
+    MANGA_TO_READ: {
+        /**
+         *  @description
+         *  Route returns the list of manga IDs in the to-read list.
+         */
+        GetMangaToReadList: {
+            key: "MANGA-TO-READ-get-manga-to-read-list",
+            methods: ["GET"],
+            endpoint: "/api/v1/manga/to-read",
+        },
+        /**
+         *  @description
+         *  Route adds a manga to the to-read list.
+         */
+        AddMangaToReadItem: {
+            key: "MANGA-TO-READ-add-manga-to-read-item",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/to-read",
+        },
+        /**
+         *  @description
+         *  Route removes a manga from the to-read list.
+         */
+        RemoveMangaToReadItem: {
+            key: "MANGA-TO-READ-remove-manga-to-read-item",
+            methods: ["DELETE"],
+            endpoint: "/api/v1/manga/to-read",
+        },
+        /**
+         *  @description
+         *  Route checks if a manga is in the to-read list.
+         */
+        IsMangaInToReadList: {
+            key: "MANGA-TO-READ-is-manga-in-to-read-list",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/to-read/check",
+        },
+    },
     MANUAL_DUMP: {
         TestDump: {
             key: "MANUAL-DUMP-test-dump",
