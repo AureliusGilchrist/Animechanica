@@ -13,6 +13,7 @@ import (
 	chapter_downloader "seanime/internal/manga/downloader"
 	"seanime/internal/util"
 	"seanime/internal/util/filecache"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
