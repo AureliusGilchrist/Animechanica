@@ -339,12 +339,6 @@ func (r *Repository) getDownloadedMangaPageContainer(
 // calculateChapterNumberForMatch calculates the chapter number for matching downloaded chapters.
 // Same logic as calculateChapterNumber in download.go.
 func calculateChapterNumberForMatch(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
-	// For decimal chapters (e.g., "50.5"), use the integer part for folder naming
-	if strings.Contains(originalChapter, ".") {
-		parts := strings.Split(originalChapter, ".")
-		return parts[0]
-	}
-
 	// Count decimal chapters that come before this chapter's index
 	decimalsBefore := 0
 	for i, ch := range container.Chapters {
@@ -356,6 +350,11 @@ func calculateChapterNumberForMatch(originalChapter string, chapterIndex uint, c
 		}
 	}
 
-	// For non-decimal chapters, use index + 1 minus decimals before
+	// For decimal chapters, also subtract 1 more since they share the base number with the previous chapter
+	if strings.Contains(originalChapter, ".") {
+		decimalsBefore++
+	}
+
+	// Calculate chapter number: index + 1 minus decimals before (including self if decimal)
 	return fmt.Sprintf("%d", int(chapterIndex)+1-decimalsBefore)
 }
