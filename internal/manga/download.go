@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"seanime/internal/api/anilist"
 	"seanime/internal/database/db"
 	"seanime/internal/database/models"
@@ -49,8 +50,9 @@ type (
 	ProviderDownloadMap map[string][]ProviderDownloadMapChapterInfo
 
 	ProviderDownloadMapChapterInfo struct {
-		ChapterID     string `json:"chapterId"`
-		ChapterNumber string `json:"chapterNumber"`
+		ChapterID            string `json:"chapterId"`
+		ChapterNumber        string `json:"chapterNumber"`        // Used for folder naming (calculated)
+		DisplayChapterNumber string `json:"displayChapterNumber"` // Original chapter number for UI display
 	}
 
 	MediaDownloadData struct {
@@ -207,9 +209,11 @@ func (d *Downloader) DownloadChapter(opts DownloadChapterOptions) error {
 	}
 
 	// Add the chapter to the download queue
-	// Use Index+1 as the chapter number to ensure uniqueness across groups
-	// e.g., "Chapter 1" (index 0) -> "1", "Group 2 Chapter 1" (index 1) -> "2"
-	chapterNumber := fmt.Sprintf("%d", chapter.Index+1)
+	// Calculate chapter number based on position in the full chapter list
+	chapterNumber := calculateChapterNumber(chapter.Chapter, chapter.Index, chapterContainer)
+	// Use the calculated chapter number for UI display as well
+	// This shows the true position (e.g., "652" instead of "235" for "Group 3 Chapter 235")
+	displayChapterNumber := chapterNumber
 
 	d.logger.Debug().
 		Str("provider", opts.Provider).
@@ -217,17 +221,19 @@ func (d *Downloader) DownloadChapter(opts DownloadChapterOptions) error {
 		Str("chapterId", opts.ChapterId).
 		Str("chapterTitle", chapter.Title).
 		Str("chapterNumber", chapterNumber).
+		Str("displayChapterNumber", displayChapterNumber).
 		Uint("chapterIndex", chapter.Index).
 		Msg("manga downloader: Adding chapter to queue")
 
 	return d.chapterDownloader.AddToQueue(chapter_downloader.DownloadOptions{
 		DownloadID: chapter_downloader.DownloadID{
-			Provider:      opts.Provider,
-			MediaId:       opts.MediaId,
-			ChapterId:     opts.ChapterId,
-			ChapterNumber: chapterNumber,
-			ChapterTitle:  chapter.Title, // Use the title from the source
-			ChapterIndex:  chapter.Index, // Use the index from the source for ordering
+			Provider:             opts.Provider,
+			MediaId:              opts.MediaId,
+			ChapterId:            opts.ChapterId,
+			ChapterNumber:        chapterNumber,        // For folder naming
+			DisplayChapterNumber: displayChapterNumber, // For UI display
+			ChapterTitle:         chapter.Title,        // Use the title from the source
+			ChapterIndex:         chapter.Index,        // Use the index from the source for ordering
 		},
 		Pages: pageContainer.Pages,
 	})
@@ -271,6 +277,20 @@ func (d *Downloader) DeleteChapters(ids []chapter_downloader.DownloadID) (err er
 	}
 
 	d.hydrateMediaMap()
+
+	return nil
+}
+
+// RemoveChaptersFromQueue removes chapters from the download queue.
+func (d *Downloader) RemoveChaptersFromQueue(ids []chapter_downloader.DownloadID) (err error) {
+	for _, id := range ids {
+		err = d.database.DeleteChapterDownloadQueueItem(id.Provider, id.MediaId, id.ChapterId)
+		if err != nil {
+			d.logger.Error().Err(err).Msg("manga downloader: Failed to remove chapter from queue")
+		}
+	}
+
+	d.wsEventManager.SendEvent(events.ChapterDownloadQueueUpdated, nil)
 
 	return nil
 }
@@ -378,14 +398,16 @@ func (mm *MediaMap) getMediaDownload(mediaId int, db *db.Database) (MediaDownloa
 		if _, ok := qm[item.Provider]; !ok {
 			qm[item.Provider] = []ProviderDownloadMapChapterInfo{
 				{
-					ChapterID:     item.ChapterID,
-					ChapterNumber: item.ChapterNumber,
+					ChapterID:            item.ChapterID,
+					ChapterNumber:        item.ChapterNumber,
+					DisplayChapterNumber: item.DisplayChapterNumber,
 				},
 			}
 		} else {
 			qm[item.Provider] = append(qm[item.Provider], ProviderDownloadMapChapterInfo{
-				ChapterID:     item.ChapterID,
-				ChapterNumber: item.ChapterNumber,
+				ChapterID:            item.ChapterID,
+				ChapterNumber:        item.ChapterNumber,
+				DisplayChapterNumber: item.DisplayChapterNumber,
 			})
 		}
 	}
@@ -438,10 +460,20 @@ func (d *Downloader) hydrateMediaMap() {
 					return
 				}
 
+				// Try to read metadata for display chapter number
+				chapterDir := filepath.Join(d.downloadDir, file.Name())
+				metadata := chapter_downloader.ReadChapterMetadata(chapterDir)
+
+				displayChapterNumber := id.ChapterNumber // Default to folder chapter number
+				if metadata != nil && metadata.DisplayChapterNumber != "" {
+					displayChapterNumber = metadata.DisplayChapterNumber
+				}
+
 				mu.Lock()
 				newMapInfo := ProviderDownloadMapChapterInfo{
-					ChapterID:     id.ChapterId,
-					ChapterNumber: id.ChapterNumber,
+					ChapterID:            id.ChapterId,
+					ChapterNumber:        id.ChapterNumber,
+					DisplayChapterNumber: displayChapterNumber,
 				}
 
 				if _, ok := ret[id.MediaId]; !ok {
@@ -474,4 +506,13 @@ func (d *Downloader) hydrateMediaMap() {
 
 	// When done refreshing, send a message to the client to refetch the download data
 	d.wsEventManager.SendEvent(events.RefreshedMangaDownloadData, nil)
+}
+
+// calculateChapterNumber determines the chapter number for a downloaded chapter's folder name.
+// Uses chapterIndex + 1 to get the correct position (1-indexed).
+// This ensures correct ordering regardless of the chapter naming scheme (e.g., "Group X Chapter Y").
+func calculateChapterNumber(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
+	// Use index + 1 as the chapter number (1-indexed)
+	// Index 0 = Chapter 1, Index 1 = Chapter 2, etc.
+	return fmt.Sprintf("%d", chapterIndex+1)
 }

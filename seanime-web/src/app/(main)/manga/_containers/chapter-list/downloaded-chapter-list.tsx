@@ -4,12 +4,12 @@
 
 
 import { Manga_ChapterContainer, Manga_Entry, Manga_MediaDownloadData } from "@/api/generated/types"
-import { useDeleteMangaDownloadedChapters } from "@/api/hooks/manga_download.hooks"
+import { useDeleteMangaDownloadedChapters, useRemoveMangaChaptersFromQueue } from "@/api/hooks/manga_download.hooks"
 
 import { useSetCurrentChapter } from "@/app/(main)/manga/_lib/handle-chapter-reader"
 import { MangaDownloadChapterItem, useMangaEntryDownloadedChapters } from "@/app/(main)/manga/_lib/handle-manga-downloads"
 import { useSelectedMangaProvider } from "@/app/(main)/manga/_lib/handle-manga-selected-provider"
-import { getChapterNumberFromChapter } from "@/app/(main)/manga/_lib/handle-manga-utils"
+import { getDecimalFromChapter } from "@/app/(main)/manga/_lib/handle-manga-utils"
 import { primaryPillCheckboxClasses } from "@/components/shared/classnames"
 import { Button, IconButton } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -50,6 +50,7 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
     const [showQueued, setShowQueued] = React.useState(false)
 
     const { mutate: deleteChapters, isPending: isDeletingChapter } = useDeleteMangaDownloadedChapters(String(entry.mediaId), selectedProvider)
+    const { mutate: removeFromQueue, isPending: isRemovingFromQueue } = useRemoveMangaChaptersFromQueue(entry.mediaId)
 
     const downloadedOrQueuedChapters = useMangaEntryDownloadedChapters()
 
@@ -64,14 +65,15 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
     const chapterIdsToNumber = React.useMemo(() => {
         const map = new Map<string, number>()
         for (const chapter of tableData ?? []) {
-            map.set(chapter.chapterId, getChapterNumberFromChapter(chapter.chapterNumber))
+            // Use displayChapterNumber for sorting to properly handle decimals (e.g., 50.5 comes after 50)
+            map.set(chapter.chapterId, getDecimalFromChapter(chapter.displayChapterNumber))
         }
         return map
     }, [tableData])
 
     const columns = React.useMemo(() => defineDataGridColumns<MangaDownloadChapterItem>(() => [
         {
-            accessorKey: "chapterNumber",
+            accessorKey: "displayChapterNumber",
             header: "Chapter",
             size: 90,
             cell: info => <span>Chapter {info.getValue<string>()}</span>,
@@ -152,21 +154,44 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
 
     const handleDeleteSelectedChapters = React.useCallback(() => {
         if (!!selectedChapters.length) {
-            deleteChapters({
-                downloadIds: selectedChapters.map(chapter => ({
-                    mediaId: entry.mediaId,
-                    provider: chapter.provider,
-                    chapterId: chapter.chapterId,
-                    chapterNumber: chapter.chapterNumber,
-                })),
-            }, {
-                onSuccess: () => {
-                },
-            })
+            // Separate downloaded and queued chapters
+            const downloadedChapters = selectedChapters.filter(ch => ch.downloaded)
+            const queuedChapters = selectedChapters.filter(ch => ch.queued)
+
+            // Delete downloaded chapters
+            if (downloadedChapters.length > 0) {
+                deleteChapters({
+                    downloadIds: downloadedChapters.map(chapter => ({
+                        mediaId: entry.mediaId,
+                        provider: chapter.provider,
+                        chapterId: chapter.chapterId,
+                        chapterNumber: chapter.chapterNumber,
+                        displayChapterNumber: chapter.displayChapterNumber,
+                        chapterTitle: "",
+                        chapterIndex: 0,
+                    })),
+                })
+            }
+
+            // Remove queued chapters
+            if (queuedChapters.length > 0) {
+                removeFromQueue({
+                    downloadIds: queuedChapters.map(chapter => ({
+                        mediaId: entry.mediaId,
+                        provider: chapter.provider,
+                        chapterId: chapter.chapterId,
+                        chapterNumber: chapter.chapterNumber,
+                        displayChapterNumber: chapter.displayChapterNumber,
+                        chapterTitle: "",
+                        chapterIndex: 0,
+                    })),
+                })
+            }
+
             setRowSelection({})
             setSelectedChapters([])
         }
-    }, [selectedChapters])
+    }, [selectedChapters, deleteChapters, removeFromQueue, entry.mediaId])
 
     if (!data || Object.keys(data.downloaded).length === 0 && Object.keys(data.queued).length === 0) return null
 
@@ -195,9 +220,9 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
                         size="sm"
                         leftIcon={<BiTrash />}
                         className=""
-                        loading={isDeletingChapter}
+                        loading={isDeletingChapter || isRemovingFromQueue}
                     >
-                        Delete selected chapters ({selectedChapters?.length})
+                        Remove selected ({selectedChapters?.length})
                     </Button>
                 </div>}
 
@@ -207,7 +232,7 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
                     rowCount={tableData.length}
                     isLoading={false}
                     rowSelectionPrimaryKey="chapterId"
-                    enableRowSelection={row => (row.original.downloaded)}
+                    enableRowSelection={row => (row.original.downloaded || row.original.queued)}
                     initialState={{
                         pagination: {
                             pageIndex: 0,

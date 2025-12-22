@@ -1292,6 +1292,17 @@
 //     })
 // }
 
+// export function useClearAllLocalFiles() {
+//     return useServerMutation<boolean>({
+//         endpoint: API_ENDPOINTS.LOCALFILES.ClearAllLocalFiles.endpoint,
+//         method: API_ENDPOINTS.LOCALFILES.ClearAllLocalFiles.methods[0],
+//         mutationKey: [API_ENDPOINTS.LOCALFILES.ClearAllLocalFiles.key],
+//         onSuccess: async () => {
+// 
+//         },
+//     })
+// }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // mal
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1616,12 +1627,69 @@
 //     })
 // }
 
+// export function useRemoveMangaChaptersFromQueue() {
+//     return useServerMutation<boolean, RemoveMangaChaptersFromQueue_Variables>({
+//         endpoint: API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.endpoint,
+//         method: API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.methods[0],
+//         mutationKey: [API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.key],
+//         onSuccess: async () => {
+// 
+//         },
+//     })
+// }
+
 // export function useGetMangaDownloadsList() {
 //     return useServerQuery<Array<Manga_DownloadListItem>>({
 //         endpoint: API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadsList.endpoint,
 //         method: API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadsList.methods[0],
 //         queryKey: [API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadsList.key],
 //         enabled: true,
+//     })
+// }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// manga_to_read
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// export function useGetMangaToReadList() {
+//     return useServerQuery<Array<number>>({
+//         endpoint: API_ENDPOINTS.MANGA_TO_READ.GetMangaToReadList.endpoint,
+//         method: API_ENDPOINTS.MANGA_TO_READ.GetMangaToReadList.methods[0],
+//         queryKey: [API_ENDPOINTS.MANGA_TO_READ.GetMangaToReadList.key],
+//         enabled: true,
+//     })
+// }
+
+// export function useAddMangaToReadItem() {
+//     return useServerMutation<boolean, AddMangaToReadItem_Variables>({
+//         endpoint: API_ENDPOINTS.MANGA_TO_READ.AddMangaToReadItem.endpoint,
+//         method: API_ENDPOINTS.MANGA_TO_READ.AddMangaToReadItem.methods[0],
+//         mutationKey: [API_ENDPOINTS.MANGA_TO_READ.AddMangaToReadItem.key],
+//         onSuccess: async () => {
+// 
+//         },
+//     })
+// }
+
+// export function useRemoveMangaToReadItem() {
+//     return useServerMutation<boolean, RemoveMangaToReadItem_Variables>({
+//         endpoint: API_ENDPOINTS.MANGA_TO_READ.RemoveMangaToReadItem.endpoint,
+//         method: API_ENDPOINTS.MANGA_TO_READ.RemoveMangaToReadItem.methods[0],
+//         mutationKey: [API_ENDPOINTS.MANGA_TO_READ.RemoveMangaToReadItem.key],
+//         onSuccess: async () => {
+// 
+//         },
+//     })
+// }
+
+// export function useIsMangaInToReadList() {
+//     return useServerMutation<boolean, IsMangaInToReadList_Variables>({
+//         endpoint: API_ENDPOINTS.MANGA_TO_READ.IsMangaInToReadList.endpoint,
+//         method: API_ENDPOINTS.MANGA_TO_READ.IsMangaInToReadList.methods[0],
+//         mutationKey: [API_ENDPOINTS.MANGA_TO_READ.IsMangaInToReadList.key],
+//         onSuccess: async () => {
+// 
+//         },
 //     })
 // }
 
@@ -2456,6 +2524,26 @@
 //         onSuccess: async () => {
 // 
 //         },
+//     })
+// }
+
+// export function useClearTorrentPreMatches() {
+//     return useServerMutation<boolean>({
+//         endpoint: API_ENDPOINTS.TORRENT_CLIENT.ClearTorrentPreMatches.endpoint,
+//         method: API_ENDPOINTS.TORRENT_CLIENT.ClearTorrentPreMatches.methods[0],
+//         mutationKey: [API_ENDPOINTS.TORRENT_CLIENT.ClearTorrentPreMatches.key],
+//         onSuccess: async () => {
+// 
+//         },
+//     })
+// }
+
+// export function useGetMediaDownloadingStatus() {
+//     return useServerQuery<Array<MediaDownloadStatus>>({
+//         endpoint: API_ENDPOINTS.TORRENT_CLIENT.GetMediaDownloadingStatus.endpoint,
+//         method: API_ENDPOINTS.TORRENT_CLIENT.GetMediaDownloadingStatus.methods[0],
+//         queryKey: [API_ENDPOINTS.TORRENT_CLIENT.GetMediaDownloadingStatus.key],
+//         enabled: true,
 //     })
 // }
 

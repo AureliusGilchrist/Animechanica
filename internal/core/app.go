@@ -109,8 +109,9 @@ type (
 		MediaPlayerRepository *mediaplayer.Repository
 
 		// Manga services
-		MangaRepository *manga.Repository
-		MangaDownloader *manga.Downloader
+		MangaRepository    *manga.Repository
+		MangaDownloader    *manga.Downloader
+		MangaAutoDownloader *manga.AutoDownloader
 
 		// Offline and local account
 		LocalManager local.Manager

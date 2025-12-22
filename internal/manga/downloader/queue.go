@@ -63,15 +63,16 @@ func (q *Queue) Add(id DownloadID, pages []*hibikemanga.ChapterPage, runNext boo
 	}
 
 	err = q.db.InsertChapterDownloadQueueItem(&models.ChapterDownloadQueueItem{
-		BaseModel:     models.BaseModel{},
-		Provider:      id.Provider,
-		MediaID:       id.MediaId,
-		ChapterNumber: id.ChapterNumber,
-		ChapterID:     id.ChapterId,
-		ChapterTitle:  id.ChapterTitle,
-		ChapterIndex:  id.ChapterIndex,
-		PageData:      marshalled,
-		Status:        string(QueueStatusNotStarted),
+		BaseModel:            models.BaseModel{},
+		Provider:             id.Provider,
+		MediaID:              id.MediaId,
+		ChapterNumber:        id.ChapterNumber,
+		DisplayChapterNumber: id.DisplayChapterNumber,
+		ChapterID:            id.ChapterId,
+		ChapterTitle:         id.ChapterTitle,
+		ChapterIndex:         id.ChapterIndex,
+		PageData:             marshalled,
+		Status:               string(QueueStatusNotStarted),
 	})
 	if err != nil {
 		q.logger.Error().Err(err).Msgf("Failed to insert chapter download queue item for id %v", id)
@@ -182,12 +183,13 @@ func (q *Queue) runNext() {
 	}
 
 	id := DownloadID{
-		Provider:      next.Provider,
-		MediaId:       next.MediaID,
-		ChapterId:     next.ChapterID,
-		ChapterNumber: next.ChapterNumber,
-		ChapterTitle:  next.ChapterTitle,
-		ChapterIndex:  next.ChapterIndex,
+		Provider:             next.Provider,
+		MediaId:              next.MediaID,
+		ChapterId:            next.ChapterID,
+		ChapterNumber:        next.ChapterNumber,
+		DisplayChapterNumber: next.DisplayChapterNumber,
+		ChapterTitle:         next.ChapterTitle,
+		ChapterIndex:         next.ChapterIndex,
 	}
 
 	q.logger.Debug().Msgf("chapter downloader: Preparing next item in queue: %s", id.ChapterId)

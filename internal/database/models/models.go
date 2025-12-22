@@ -390,14 +390,15 @@ type MangaToReadItem struct {
 
 type ChapterDownloadQueueItem struct {
 	BaseModel
-	Provider      string `gorm:"column:provider" json:"provider"`
-	MediaID       int    `gorm:"column:media_id" json:"mediaId"`
-	ChapterID     string `gorm:"column:chapter_id" json:"chapterId"`
-	ChapterNumber string `gorm:"column:chapter_number" json:"chapterNumber"`
-	ChapterTitle  string `gorm:"column:chapter_title" json:"chapterTitle"`   // Title from the source (e.g., "Group 2 Chapter 1")
-	ChapterIndex  uint   `gorm:"column:chapter_index" json:"chapterIndex"`   // Index from the source for ordering
-	PageData      []byte `gorm:"column:page_data" json:"pageData"`           // Contains map of page index to page details
-	Status        string `gorm:"column:status" json:"status"`
+	Provider             string `gorm:"column:provider" json:"provider"`
+	MediaID              int    `gorm:"column:media_id" json:"mediaId"`
+	ChapterID            string `gorm:"column:chapter_id" json:"chapterId"`
+	ChapterNumber        string `gorm:"column:chapter_number" json:"chapterNumber"`               // Calculated number for folder naming
+	DisplayChapterNumber string `gorm:"column:display_chapter_number" json:"displayChapterNumber"` // Original chapter number for UI display
+	ChapterTitle         string `gorm:"column:chapter_title" json:"chapterTitle"`                 // Title from the source (e.g., "Group 2 Chapter 1")
+	ChapterIndex         uint   `gorm:"column:chapter_index" json:"chapterIndex"`                 // Index from the source for ordering
+	PageData             []byte `gorm:"column:page_data" json:"pageData"`                         // Contains map of page index to page details
+	Status               string `gorm:"column:status" json:"status"`
 }
 
 // +---------------------+

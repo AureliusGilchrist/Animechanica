@@ -185,6 +185,32 @@ func (h *Handler) HandleDeleteMangaDownloadedChapters(c echo.Context) error {
 	return h.RespondWithData(c, true)
 }
 
+// HandleRemoveMangaChaptersFromQueue
+//
+//	@summary removes chapters from the download queue.
+//	@desc This will remove chapters from the download queue (not currently downloading ones).
+//	@desc Returns 'true' whether the chapters were removed or not.
+//	@route /api/v1/manga/download-queue/remove [DELETE]
+//	@returns bool
+func (h *Handler) HandleRemoveMangaChaptersFromQueue(c echo.Context) error {
+
+	type body struct {
+		DownloadIds []chapter_downloader.DownloadID `json:"downloadIds"`
+	}
+
+	var b body
+	if err := c.Bind(&b); err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	err := h.App.MangaDownloader.RemoveChaptersFromQueue(b.DownloadIds)
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	return h.RespondWithData(c, true)
+}
+
 // HandleGetMangaDownloadsList
 //
 //	@summary displays the list of downloaded manga.

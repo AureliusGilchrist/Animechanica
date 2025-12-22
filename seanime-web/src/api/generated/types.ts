@@ -1746,7 +1746,22 @@ export type ChapterDownloader_DownloadID = {
     provider: string
     mediaId: number
     chapterId: string
+    /**
+     * Calculated number for folder naming
+     */
     chapterNumber: string
+    /**
+     * Original chapter number for UI display (e.g., "50.5")
+     */
+    displayChapterNumber: string
+    /**
+     * Title from the source (e.g., "Group 2 Chapter 1")
+     */
+    chapterTitle: string
+    /**
+     * Index from the source for ordering
+     */
+    chapterIndex: number
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3146,7 +3161,14 @@ export type Manga_ProviderDownloadMap = Record<string, Array<Manga_ProviderDownl
  */
 export type Manga_ProviderDownloadMapChapterInfo = {
     chapterId: string
+    /**
+     * Used for folder naming (calculated)
+     */
     chapterNumber: string
+    /**
+     * Original chapter number for UI display
+     */
+    displayChapterNumber: string
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3566,7 +3588,22 @@ export type Models_ChapterDownloadQueueItem = {
     provider: string
     mediaId: number
     chapterId: string
+    /**
+     * Calculated number for folder naming
+     */
     chapterNumber: string
+    /**
+     * Original chapter number for UI display
+     */
+    displayChapterNumber: string
+    /**
+     * Title from the source (e.g., "Group 2 Chapter 1")
+     */
+    chapterTitle: string
+    /**
+     * Index from the source for ordering
+     */
+    chapterIndex: number
     /**
      * Contains map of page index to page details
      */

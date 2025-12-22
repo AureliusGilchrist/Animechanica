@@ -380,6 +380,7 @@ func InitRoutes(app *core.App, e *echo.Echo) {
 	v1Manga.POST("/download-queue/start", h.HandleStartMangaDownloadQueue)
 	v1Manga.POST("/download-queue/stop", h.HandleStopMangaDownloadQueue)
 	v1Manga.DELETE("/download-queue", h.HandleClearAllChapterDownloadQueue)
+	v1Manga.DELETE("/download-queue/remove", h.HandleRemoveMangaChaptersFromQueue)
 	v1Manga.POST("/download-queue/reset-errored", h.HandleResetErroredChapterDownloadQueue)
 
 	v1Manga.POST("/search", h.HandleMangaManualSearch)

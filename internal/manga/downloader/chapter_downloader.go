@@ -53,12 +53,13 @@ type (
 	//+-------------------------------------------------------------------------------------------------------------------+
 
 	DownloadID struct {
-		Provider      string `json:"provider"`
-		MediaId       int    `json:"mediaId"`
-		ChapterId     string `json:"chapterId"`
-		ChapterNumber string `json:"chapterNumber"`
-		ChapterTitle  string `json:"chapterTitle"` // Title from the source (e.g., "Group 2 Chapter 1")
-		ChapterIndex  uint   `json:"chapterIndex"` // Index from the source for ordering
+		Provider             string `json:"provider"`
+		MediaId              int    `json:"mediaId"`
+		ChapterId            string `json:"chapterId"`
+		ChapterNumber        string `json:"chapterNumber"`        // Calculated number for folder naming
+		DisplayChapterNumber string `json:"displayChapterNumber"` // Original chapter number for UI display (e.g., "50.5")
+		ChapterTitle         string `json:"chapterTitle"`         // Title from the source (e.g., "Group 2 Chapter 1")
+		ChapterIndex         uint   `json:"chapterIndex"`         // Index from the source for ordering
 	}
 
 	//+-------------------------------------------------------------------------------------------------------------------+
@@ -73,6 +74,14 @@ type (
 		Size        int64  `json:"size"`
 		Width       int    `json:"width"`
 		Height      int    `json:"height"`
+	}
+
+	// ChapterMetadata stored in 📄 metadata.json for each chapter download.
+	// Contains chapter info for display purposes.
+	ChapterMetadata struct {
+		DisplayChapterNumber string `json:"displayChapterNumber"` // Original chapter number for UI display (e.g., "50.5")
+		ChapterTitle         string `json:"chapterTitle"`         // Title from the source
+		ChapterIndex         uint   `json:"chapterIndex"`         // Index from the source for ordering
 	}
 )
 
@@ -391,17 +400,59 @@ func (r *Registry) save(queueInfo *QueueInfo, destination string, logger *zerolo
 		return err
 	}
 
-	return
+	// Create metadata file with display chapter number
+	metadata := ChapterMetadata{
+		DisplayChapterNumber: queueInfo.DownloadID.DisplayChapterNumber,
+		ChapterTitle:         queueInfo.DownloadID.ChapterTitle,
+		ChapterIndex:         queueInfo.DownloadID.ChapterIndex,
+	}
+	metadataData, err := json.Marshal(metadata)
+	if err != nil {
+		logger.Warn().Err(err).Msg("chapter downloader: Failed to marshal metadata")
+		return nil // Don't fail the download for metadata
+	}
+
+	metadataFilePath := filepath.Join(destination, "metadata.json")
+	if err := os.WriteFile(metadataFilePath, metadataData, 0644); err != nil {
+		logger.Warn().Err(err).Msg("chapter downloader: Failed to save metadata")
+	}
+
+	return nil
 }
 
 func (cd *Downloader) getChapterDownloadDir(downloadId DownloadID) string {
 	return filepath.Join(cd.downloadDir, FormatChapterDirName(downloadId.Provider, downloadId.MediaId, downloadId.ChapterId, downloadId.ChapterNumber, downloadId.ChapterTitle, downloadId.ChapterIndex))
 }
 
+// ReadChapterMetadata reads the metadata.json file from a chapter directory.
+// Returns nil if the file doesn't exist or can't be read.
+func ReadChapterMetadata(chapterDir string) *ChapterMetadata {
+	metadataPath := filepath.Join(chapterDir, "metadata.json")
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		return nil
+	}
+
+	var metadata ChapterMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil
+	}
+
+	return &metadata
+}
+
 func FormatChapterDirName(provider string, mediaId int, chapterId string, chapterNumber string, chapterTitle string, chapterIndex uint) string {
-	// Use the original format for folder names: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
-	// This ensures the app can properly recognize downloaded chapters
-	return fmt.Sprintf("%s_%d_%s_%s", provider, mediaId, EscapeChapterID(chapterId), chapterNumber)
+	// Format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}_{sanitizedTitle}
+	// Include sanitized title for easier identification in file browser
+	sanitizedTitle := sanitizeForFilesystem(chapterTitle)
+	if sanitizedTitle == "" {
+		sanitizedTitle = fmt.Sprintf("Chapter_%s", chapterNumber)
+	}
+	// Limit title length to avoid overly long folder names
+	if len(sanitizedTitle) > 50 {
+		sanitizedTitle = sanitizedTitle[:50]
+	}
+	return fmt.Sprintf("%s_%d_%s_%s_%s", provider, mediaId, EscapeChapterID(chapterId), chapterNumber, sanitizedTitle)
 }
 
 // sanitizeForFilesystem removes or replaces characters that are invalid in filenames

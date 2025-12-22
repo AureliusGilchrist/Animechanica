@@ -3557,7 +3557,14 @@ declare namespace $app {
      */
     interface Manga_ProviderDownloadMapChapterInfo {
         chapterId: string;
+        /**
+         * Used for folder naming (calculated)
+         */
         chapterNumber: string;
+        /**
+         * Original chapter number for UI display
+         */
+        displayChapterNumber: string;
     }
 
     /**

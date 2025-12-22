@@ -6,6 +6,7 @@ import { GlobalSearch } from "@/app/(main)/_features/global-search/global-search
 import { IssueReport } from "@/app/(main)/_features/issue-report/issue-report"
 import { LibraryExplorerDrawer } from "@/app/(main)/_features/library-explorer/library-explorer-drawer"
 import { LibraryWatcher } from "@/app/(main)/_features/library-watcher/library-watcher"
+import { MangaChapterNotification } from "@/app/(main)/_features/manga/manga-chapter-notification"
 import { MediaPreviewModal } from "@/app/(main)/_features/media/_containers/media-preview-modal"
 import { MainSidebar } from "@/app/(main)/_features/navigation/main-sidebar"
 import { GlobalPlaylistManager } from "@/app/(main)/_features/playlists/_containers/global-playlist-manager"
@@ -91,6 +92,7 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <GlobalSearch />
             <ScanProgressBar />
             <LibraryWatcher />
+            <MangaChapterNotification />
             <ScannerModal />
             <PlaylistListModal />
             <GlobalPlaylistManager />

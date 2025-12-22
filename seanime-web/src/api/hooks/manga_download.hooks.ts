@@ -3,6 +3,7 @@ import {
     DeleteMangaDownloadedChapters_Variables,
     DownloadMangaChapters_Variables,
     GetMangaDownloadData_Variables,
+    RemoveMangaChaptersFromQueue_Variables,
 } from "@/api/generated/endpoint.types"
 import { API_ENDPOINTS } from "@/api/generated/endpoints"
 import { Manga_DownloadListItem, Manga_MediaDownloadData, Models_ChapterDownloadQueueItem, Nullish } from "@/api/generated/types"
@@ -118,6 +119,20 @@ export function useGetMangaDownloadsList() {
         method: API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadsList.methods[0],
         queryKey: [API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadsList.key],
         enabled: true,
+    })
+}
+
+export function useRemoveMangaChaptersFromQueue(id: Nullish<string | number>) {
+    const queryClient = useQueryClient()
+    return useServerMutation<boolean, RemoveMangaChaptersFromQueue_Variables>({
+        endpoint: API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.endpoint,
+        method: API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.methods[0],
+        mutationKey: [API_ENDPOINTS.MANGA_DOWNLOAD.RemoveMangaChaptersFromQueue.key, String(id)],
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadData.key] })
+            await queryClient.invalidateQueries({ queryKey: [API_ENDPOINTS.MANGA_DOWNLOAD.GetMangaDownloadQueue.key] })
+            toast.success("Chapters removed from queue")
+        },
     })
 }
 

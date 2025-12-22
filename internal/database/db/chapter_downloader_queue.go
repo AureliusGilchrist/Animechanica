@@ -100,6 +100,20 @@ func (db *Database) GetMediaQueuedChapters(mediaId int) ([]*models.ChapterDownlo
 	return res, nil
 }
 
+// DeleteChapterDownloadQueueItem removes a chapter from the download queue.
+// Only removes items that are not currently downloading.
+func (db *Database) DeleteChapterDownloadQueueItem(provider string, mediaId int, chapterId string) error {
+	err := db.gormdb.
+		Where("provider = ? AND media_id = ? AND chapter_id = ? AND status != ?", provider, mediaId, chapterId, "downloading").
+		Delete(&models.ChapterDownloadQueueItem{}).
+		Error
+	if err != nil {
+		db.Logger.Error().Err(err).Msg("db: Failed to delete chapter download queue item")
+		return err
+	}
+	return nil
+}
+
 func (db *Database) ClearAllChapterDownloadQueueItems() error {
 	err := db.gormdb.
 		Where("status = ? OR status = ? OR status = ?", "not_started", "downloading", "errored").

@@ -1282,10 +1282,10 @@
     "comments": [
       "HandleLogin",
       "",
-      "\t@summary logs in the user by saving the JWT token in the database.",
+      "\t@summary logs in the user by saving the JWT token for the current session.",
       "\t@desc This is called when the JWT token is obtained from AniList after logging in with redirection on the client.",
-      "\t@desc It also fetches the Viewer data from AniList and saves it in the database.",
-      "\t@desc It creates a new handlers.Status and refreshes App modules.",
+      "\t@desc It also fetches the Viewer data from AniList and saves it in the session.",
+      "\t@desc Multi-user support: Each browser tab can have a different Anilist account via session cookies.",
       "\t@route /api/v1/auth/login [POST]",
       "\t@returns handlers.Status",
       ""
@@ -1293,11 +1293,11 @@
     "filepath": "internal/handlers/auth.go",
     "filename": "auth.go",
     "api": {
-      "summary": "logs in the user by saving the JWT token in the database.",
+      "summary": "logs in the user by saving the JWT token for the current session.",
       "descriptions": [
         "This is called when the JWT token is obtained from AniList after logging in with redirection on the client.",
-        "It also fetches the Viewer data from AniList and saves it in the database.",
-        "It creates a new handlers.Status and refreshes App modules."
+        "It also fetches the Viewer data from AniList and saves it in the session.",
+        "Multi-user support: Each browser tab can have a different Anilist account via session cookies."
       ],
       "endpoint": "/api/v1/auth/login",
       "methods": [
@@ -1326,9 +1326,9 @@
     "comments": [
       "HandleLogout",
       "",
-      "\t@summary logs out the user by removing JWT token from the database.",
-      "\t@desc It removes JWT token and Viewer data from the database.",
-      "\t@desc It creates a new handlers.Status and refreshes App modules.",
+      "\t@summary logs out the current session from AniList.",
+      "\t@desc It removes JWT token and Viewer data from the session.",
+      "\t@desc Multi-user support: Only logs out the current browser tab's session.",
       "\t@route /api/v1/auth/logout [POST]",
       "\t@returns handlers.Status",
       ""
@@ -1336,10 +1336,10 @@
     "filepath": "internal/handlers/auth.go",
     "filename": "auth.go",
     "api": {
-      "summary": "logs out the user by removing JWT token from the database.",
+      "summary": "logs out the current session from AniList.",
       "descriptions": [
-        "It removes JWT token and Viewer data from the database.",
-        "It creates a new handlers.Status and refreshes App modules."
+        "It removes JWT token and Viewer data from the session.",
+        "Multi-user support: Only logs out the current browser tab's session."
       ],
       "endpoint": "/api/v1/auth/logout",
       "methods": [
@@ -5026,6 +5026,38 @@
     }
   },
   {
+    "name": "HandleClearAllLocalFiles",
+    "trimmedName": "ClearAllLocalFiles",
+    "comments": [
+      "HandleClearAllLocalFiles",
+      "",
+      "\t@summary clears all local files from the database.",
+      "\t@desc This will remove all anime local file entries from the database. Manga data is not affected.",
+      "\t@desc After calling this, you should rescan your library.",
+      "\t@route /api/v1/library/local-files/clear [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/localfiles.go",
+    "filename": "localfiles.go",
+    "api": {
+      "summary": "clears all local files from the database.",
+      "descriptions": [
+        "This will remove all anime local file entries from the database. Manga data is not affected.",
+        "After calling this, you should rescan your library."
+      ],
+      "endpoint": "/api/v1/library/local-files/clear",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
     "name": "HandleMALAuth",
     "trimmedName": "MALAuth",
     "comments": [
@@ -6369,6 +6401,48 @@
     }
   },
   {
+    "name": "HandleRemoveMangaChaptersFromQueue",
+    "trimmedName": "RemoveMangaChaptersFromQueue",
+    "comments": [
+      "HandleRemoveMangaChaptersFromQueue",
+      "",
+      "\t@summary removes chapters from the download queue.",
+      "\t@desc This will remove chapters from the download queue (not currently downloading ones).",
+      "\t@desc Returns 'true' whether the chapters were removed or not.",
+      "\t@route /api/v1/manga/download-queue/remove [DELETE]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/manga_download.go",
+    "filename": "manga_download.go",
+    "api": {
+      "summary": "removes chapters from the download queue.",
+      "descriptions": [
+        "This will remove chapters from the download queue (not currently downloading ones).",
+        "Returns 'true' whether the chapters were removed or not."
+      ],
+      "endpoint": "/api/v1/manga/download-queue/remove",
+      "methods": [
+        "DELETE"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "DownloadIds",
+          "jsonName": "downloadIds",
+          "goType": "[]chapter_downloader.DownloadID",
+          "usedStructType": "chapter_downloader.DownloadID",
+          "typescriptType": "Array\u003cChapterDownloader_DownloadID\u003e",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
     "name": "HandleGetMangaDownloadsList",
     "trimmedName": "GetMangaDownloadsList",
     "comments": [
@@ -6398,6 +6472,147 @@
       "returns": "[]manga.DownloadListItem",
       "returnGoType": "manga.DownloadListItem",
       "returnTypescriptType": "Array\u003cManga_DownloadListItem\u003e"
+    }
+  },
+  {
+    "name": "HandleGetMangaToReadList",
+    "trimmedName": "GetMangaToReadList",
+    "comments": [
+      "HandleGetMangaToReadList",
+      "",
+      "\t@summary returns the list of manga IDs in the to-read list.",
+      "\t@route /api/v1/manga/to-read [GET]",
+      "\t@returns []int",
+      ""
+    ],
+    "filepath": "internal/handlers/manga_to_read.go",
+    "filename": "manga_to_read.go",
+    "api": {
+      "summary": "returns the list of manga IDs in the to-read list.",
+      "descriptions": [],
+      "endpoint": "/api/v1/manga/to-read",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]int",
+      "returnGoType": "int",
+      "returnTypescriptType": "Array\u003cnumber\u003e"
+    }
+  },
+  {
+    "name": "HandleAddMangaToReadItem",
+    "trimmedName": "AddMangaToReadItem",
+    "comments": [
+      "HandleAddMangaToReadItem",
+      "",
+      "\t@summary adds a manga to the to-read list.",
+      "\t@desc If the manga is not in the user's AniList collection, it will be added with \"Planning\" status.",
+      "\t@route /api/v1/manga/to-read [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/manga_to_read.go",
+    "filename": "manga_to_read.go",
+    "api": {
+      "summary": "adds a manga to the to-read list.",
+      "descriptions": [
+        "If the manga is not in the user's AniList collection, it will be added with \"Planning\" status."
+      ],
+      "endpoint": "/api/v1/manga/to-read",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "MediaId",
+          "jsonName": "mediaId",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleRemoveMangaToReadItem",
+    "trimmedName": "RemoveMangaToReadItem",
+    "comments": [
+      "HandleRemoveMangaToReadItem",
+      "",
+      "\t@summary removes a manga from the to-read list.",
+      "\t@route /api/v1/manga/to-read [DELETE]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/manga_to_read.go",
+    "filename": "manga_to_read.go",
+    "api": {
+      "summary": "removes a manga from the to-read list.",
+      "descriptions": [],
+      "endpoint": "/api/v1/manga/to-read",
+      "methods": [
+        "DELETE"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "MediaId",
+          "jsonName": "mediaId",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleIsMangaInToReadList",
+    "trimmedName": "IsMangaInToReadList",
+    "comments": [
+      "HandleIsMangaInToReadList",
+      "",
+      "\t@summary checks if a manga is in the to-read list.",
+      "\t@route /api/v1/manga/to-read/check [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/manga_to_read.go",
+    "filename": "manga_to_read.go",
+    "api": {
+      "summary": "checks if a manga is in the to-read list.",
+      "descriptions": [],
+      "endpoint": "/api/v1/manga/to-read/check",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [
+        {
+          "name": "MediaId",
+          "jsonName": "mediaId",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": []
+        }
+      ],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
     }
   },
   {
@@ -8697,6 +8912,112 @@
     }
   },
   {
+    "name": "SessionMiddleware",
+    "trimmedName": "SessionMiddleware",
+    "comments": [
+      "SessionMiddleware extracts or creates a session for each request",
+      "This enables multi-user support where different browser tabs can have different Anilist accounts",
+      ""
+    ],
+    "filepath": "internal/handlers/session_middleware.go",
+    "filename": "session_middleware.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "GetSessionFromContext",
+    "trimmedName": "GetSessionFromContext",
+    "comments": [
+      "GetSessionFromContext retrieves the session from the echo context",
+      ""
+    ],
+    "filepath": "internal/handlers/session_middleware.go",
+    "filename": "session_middleware.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "GetSessionID",
+    "trimmedName": "GetSessionID",
+    "comments": [
+      "GetSessionID retrieves the session ID from the echo context",
+      ""
+    ],
+    "filepath": "internal/handlers/session_middleware.go",
+    "filename": "session_middleware.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "GetSessionAnilistClient",
+    "trimmedName": "GetSessionAnilistClient",
+    "comments": [
+      "GetSessionAnilistClient returns the Anilist client for the current session",
+      ""
+    ],
+    "filepath": "internal/handlers/session_middleware.go",
+    "filename": "session_middleware.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "GetSessionAnilistToken",
+    "trimmedName": "GetSessionAnilistToken",
+    "comments": [
+      "GetSessionAnilistToken returns the Anilist token for the current session",
+      ""
+    ],
+    "filepath": "internal/handlers/session_middleware.go",
+    "filename": "session_middleware.go",
+    "api": {
+      "summary": "",
+      "descriptions": [],
+      "endpoint": "",
+      "methods": null,
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
     "name": "HandleGetSettings",
     "trimmedName": "GetSettings",
     "comments": [
@@ -9057,6 +9378,7 @@
     "comments": [
       "NewStatus returns a new Status struct.",
       "It uses the RouteCtx to get the App instance containing the Database instance.",
+      "Multi-user support: Returns session-specific user data based on the browser's session cookie.",
       ""
     ],
     "filepath": "internal/handlers/status.go",
@@ -9812,6 +10134,68 @@
       "returns": "bool",
       "returnGoType": "bool",
       "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleClearTorrentPreMatches",
+    "trimmedName": "ClearTorrentPreMatches",
+    "comments": [
+      "HandleClearTorrentPreMatches",
+      "",
+      "\t@summary clears all torrent pre-match entries from the database.",
+      "\t@desc This handler removes all stored associations between torrent destinations and media IDs.",
+      "\t@route /api/v1/torrent-client/clear-pre-matches [POST]",
+      "\t@returns bool",
+      ""
+    ],
+    "filepath": "internal/handlers/torrent_client.go",
+    "filename": "torrent_client.go",
+    "api": {
+      "summary": "clears all torrent pre-match entries from the database.",
+      "descriptions": [
+        "This handler removes all stored associations between torrent destinations and media IDs."
+      ],
+      "endpoint": "/api/v1/torrent-client/clear-pre-matches",
+      "methods": [
+        "POST"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "bool",
+      "returnGoType": "bool",
+      "returnTypescriptType": "boolean"
+    }
+  },
+  {
+    "name": "HandleGetMediaDownloadingStatus",
+    "trimmedName": "GetMediaDownloadingStatus",
+    "comments": [
+      "HandleGetMediaDownloadingStatus",
+      "",
+      "\t@summary returns the download status of media items that are currently downloading.",
+      "\t@desc This handler returns a map of media IDs to their download status based on active torrents.",
+      "\t@desc Uses hash-based lookup for fast O(1) matching of torrents to anime.",
+      "\t@route /api/v1/torrent-client/media-downloading-status [GET]",
+      "\t@returns []MediaDownloadStatus",
+      ""
+    ],
+    "filepath": "internal/handlers/torrent_client.go",
+    "filename": "torrent_client.go",
+    "api": {
+      "summary": "returns the download status of media items that are currently downloading.",
+      "descriptions": [
+        "This handler returns a map of media IDs to their download status based on active torrents.",
+        "Uses hash-based lookup for fast O(1) matching of torrents to anime."
+      ],
+      "endpoint": "/api/v1/torrent-client/media-downloading-status",
+      "methods": [
+        "GET"
+      ],
+      "params": [],
+      "bodyFields": [],
+      "returns": "[]MediaDownloadStatus",
+      "returnGoType": "MediaDownloadStatus",
+      "returnTypescriptType": "Array\u003cMediaDownloadStatus\u003e"
     }
   },
   {

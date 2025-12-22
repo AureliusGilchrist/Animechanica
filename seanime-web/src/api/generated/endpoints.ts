@@ -294,10 +294,10 @@ export const API_ENDPOINTS = {
     AUTH: {
         /**
          *  @description
-         *  Route logs in the user by saving the JWT token in the database.
+         *  Route logs in the user by saving the JWT token for the current session.
          *  This is called when the JWT token is obtained from AniList after logging in with redirection on the client.
-         *  It also fetches the Viewer data from AniList and saves it in the database.
-         *  It creates a new handlers.Status and refreshes App modules.
+         *  It also fetches the Viewer data from AniList and saves it in the session.
+         *  Multi-user support: Each browser tab can have a different Anilist account via session cookies.
          */
         Login: {
             key: "AUTH-login",
@@ -306,9 +306,9 @@ export const API_ENDPOINTS = {
         },
         /**
          *  @description
-         *  Route logs out the user by removing JWT token from the database.
-         *  It removes JWT token and Viewer data from the database.
-         *  It creates a new handlers.Status and refreshes App modules.
+         *  Route logs out the current session from AniList.
+         *  It removes JWT token and Viewer data from the session.
+         *  Multi-user support: Only logs out the current browser tab's session.
          */
         Logout: {
             key: "AUTH-logout",
@@ -1030,6 +1030,17 @@ export const API_ENDPOINTS = {
             methods: ["DELETE"],
             endpoint: "/api/v1/library/empty-directories",
         },
+        /**
+         *  @description
+         *  Route clears all local files from the database.
+         *  This will remove all anime local file entries from the database. Manga data is not affected.
+         *  After calling this, you should rescan your library.
+         */
+        ClearAllLocalFiles: {
+            key: "LOCALFILES-clear-all-local-files",
+            methods: ["POST"],
+            endpoint: "/api/v1/library/local-files/clear",
+        },
     },
     MAL: {
         /**
@@ -1299,6 +1310,17 @@ export const API_ENDPOINTS = {
         },
         /**
          *  @description
+         *  Route removes chapters from the download queue.
+         *  This will remove chapters from the download queue (not currently downloading ones).
+         *  Returns 'true' whether the chapters were removed or not.
+         */
+        RemoveMangaChaptersFromQueue: {
+            key: "MANGA-DOWNLOAD-remove-manga-chapters-from-queue",
+            methods: ["DELETE"],
+            endpoint: "/api/v1/manga/download-queue/remove",
+        },
+        /**
+         *  @description
          *  Route displays the list of downloaded manga.
          *  This analyzes the download folder and returns a well-formatted structure for displaying downloaded manga.
          *  It returns a list of manga.DownloadListItem where the media data might be nil if it's not in the AniList collection.
@@ -1310,10 +1332,6 @@ export const API_ENDPOINTS = {
         },
     },
     MANGA_TO_READ: {
-        /**
-         *  @description
-         *  Route returns the list of manga IDs in the to-read list.
-         */
         GetMangaToReadList: {
             key: "MANGA-TO-READ-get-manga-to-read-list",
             methods: ["GET"],
@@ -1322,25 +1340,18 @@ export const API_ENDPOINTS = {
         /**
          *  @description
          *  Route adds a manga to the to-read list.
+         *  If the manga is not in the user's AniList collection, it will be added with "Planning" status.
          */
         AddMangaToReadItem: {
             key: "MANGA-TO-READ-add-manga-to-read-item",
             methods: ["POST"],
             endpoint: "/api/v1/manga/to-read",
         },
-        /**
-         *  @description
-         *  Route removes a manga from the to-read list.
-         */
         RemoveMangaToReadItem: {
             key: "MANGA-TO-READ-remove-manga-to-read-item",
             methods: ["DELETE"],
             endpoint: "/api/v1/manga/to-read",
         },
-        /**
-         *  @description
-         *  Route checks if a manga is in the to-read list.
-         */
         IsMangaInToReadList: {
             key: "MANGA-TO-READ-is-manga-in-to-read-list",
             methods: ["POST"],
@@ -2061,6 +2072,27 @@ export const API_ENDPOINTS = {
             key: "TORRENT-CLIENT-torrent-client-add-magnet-from-rule",
             methods: ["POST"],
             endpoint: "/api/v1/torrent-client/rule-magnet",
+        },
+        /**
+         *  @description
+         *  Route clears all torrent pre-match entries from the database.
+         *  This handler removes all stored associations between torrent destinations and media IDs.
+         */
+        ClearTorrentPreMatches: {
+            key: "TORRENT-CLIENT-clear-torrent-pre-matches",
+            methods: ["POST"],
+            endpoint: "/api/v1/torrent-client/clear-pre-matches",
+        },
+        /**
+         *  @description
+         *  Route returns the download status of media items that are currently downloading.
+         *  This handler returns a map of media IDs to their download status based on active torrents.
+         *  Uses hash-based lookup for fast O(1) matching of torrents to anime.
+         */
+        GetMediaDownloadingStatus: {
+            key: "TORRENT-CLIENT-get-media-downloading-status",
+            methods: ["GET"],
+            endpoint: "/api/v1/torrent-client/media-downloading-status",
         },
     },
     TORRENT_SEARCH: {

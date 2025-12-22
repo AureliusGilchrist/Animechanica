@@ -74,8 +74,11 @@ export function useDOMManager(extensionId: string) {
         return newId
     }
 
-    const safeSendPluginMessage = (type: string, payload: any) => {
+    const safeSendPluginMessage = (type: string, payload: any, requireFocus: boolean = false) => {
         if (disposedRef.current) return // Prevent sending messages if disposed
+        // If requireFocus is true, only send the message if the tab is focused
+        // This prevents plugins from triggering actions (like playing audio) on background tabs
+        if (requireFocus && !document.hasFocus()) return
         sendPluginMessage(type, payload, extensionId)
     }
 
@@ -244,11 +247,11 @@ export function useDOMManager(extensionId: string) {
                     // Call the callback
                     observer.callback(matchedElements)
 
-                    // Send the elements to the plugin
+                    // Send the elements to the plugin (require focus to prevent background tab actions)
                     safeSendPluginMessage(PluginClientEvents.DOMObserveResult, {
                         observerId,
                         elements: domElements,
-                    })
+                    }, true)
                 }
             })
         })
@@ -326,11 +329,11 @@ export function useDOMManager(extensionId: string) {
             // Call the callback
             elementObserversRef.current.get(observerId)?.callback(matchedElements)
 
-            // Send matched elements to the plugin
+            // Send matched elements to the plugin (require focus to prevent background tab actions)
             safeSendPluginMessage(PluginClientEvents.DOMObserveResult, {
                 observerId,
                 elements: domElements,
-            })
+            }, true)
         }
     }
 
@@ -391,11 +394,11 @@ export function useDOMManager(extensionId: string) {
                 // Call the callback
                 elementObserversRef.current.get(observerId)?.callback(newlyVisibleElements)
 
-                // Send matched elements to the plugin
+                // Send matched elements to the plugin (require focus to prevent background tab actions)
                 safeSendPluginMessage(PluginClientEvents.DOMObserveResult, {
                     observerId,
                     elements: domElements,
-                })
+                }, true)
             }
         }, {
             root: null, // viewport

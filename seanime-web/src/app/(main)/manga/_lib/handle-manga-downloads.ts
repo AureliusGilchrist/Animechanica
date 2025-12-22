@@ -19,7 +19,7 @@ import { toast } from "sonner"
  */
 const __manga_entryDownloadDataAtom = atom<Manga_MediaDownloadData | undefined>(undefined)
 
-export type MangaDownloadChapterItem = { provider: string, chapterId: string, chapterNumber: string, queued: boolean, downloaded: boolean }
+export type MangaDownloadChapterItem = { provider: string, chapterId: string, chapterNumber: string, displayChapterNumber: string, queued: boolean, downloaded: boolean }
 
 /**
  * @description
@@ -34,6 +34,7 @@ const __manga_entryDownloadedChaptersAtom = atom<MangaDownloadChapterItem[]>(get
                 provider,
                 chapterId: ch.chapterId,
                 chapterNumber: ch.chapterNumber,
+                displayChapterNumber: ch.displayChapterNumber || ch.chapterNumber, // Fallback to chapterNumber if not set
                 queued: false,
                 downloaded: true,
             })))
@@ -43,6 +44,7 @@ const __manga_entryDownloadedChaptersAtom = atom<MangaDownloadChapterItem[]>(get
                 provider,
                 chapterId: ch.chapterId,
                 chapterNumber: ch.chapterNumber,
+                displayChapterNumber: ch.displayChapterNumber || ch.chapterNumber, // Fallback to chapterNumber if not set
                 queued: true,
                 downloaded: false,
             })))

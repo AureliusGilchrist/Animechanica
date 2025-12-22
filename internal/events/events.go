@@ -48,9 +48,10 @@ const (
 	CheckForUpdates       = "check-for-updates"
 	CheckForAnnouncements = "check-for-announcements"
 
-	RefreshedMangaDownloadData  = "refreshed-manga-download-data"
-	ChapterDownloadQueueUpdated = "chapter-download-queue-updated"
-	OfflineSnapshotCreated      = "offline-snapshot-created"
+	RefreshedMangaDownloadData      = "refreshed-manga-download-data"
+	ChapterDownloadQueueUpdated     = "chapter-download-queue-updated"
+	OfflineSnapshotCreated          = "offline-snapshot-created"
+	MangaNewChaptersFound           = "manga-new-chapters-found" // New chapters found by auto-downloader
 
 	MediastreamShutdownStream = "mediastream-shutdown-stream"
 

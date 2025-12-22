@@ -27476,6 +27476,17 @@
         "comments": []
       },
       {
+        "name": "MangaAutoDownloader",
+        "jsonName": "MangaAutoDownloader",
+        "goType": "manga.AutoDownloader",
+        "typescriptType": "Manga_AutoDownloader",
+        "usedTypescriptType": "Manga_AutoDownloader",
+        "usedStructName": "manga.AutoDownloader",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
         "name": "LocalManager",
         "jsonName": "LocalManager",
         "goType": "local.Manager",
@@ -27781,6 +27792,17 @@
         "required": false,
         "public": true,
         "comments": []
+      },
+      {
+        "name": "SessionStore",
+        "jsonName": "SessionStore",
+        "goType": "session.Store",
+        "typescriptType": "Store",
+        "usedTypescriptType": "Store",
+        "usedStructName": "session.Store",
+        "required": false,
+        "public": true,
+        "comments": []
       }
     ],
     "comments": []
@@ -27998,9 +28020,9 @@
         "name": "Extensions",
         "jsonName": "Extensions",
         "goType": "INTERNAL_Config_Extensions",
-        "inlineStructType": "struct{\nDir string}",
+        "inlineStructType": "struct{\nDir string\nGlobalDir string}",
         "typescriptType": "INTERNAL_Config_Extensions",
-        "usedTypescriptType": "{ Dir: string; }",
+        "usedTypescriptType": "{ Dir: string; GlobalDir: string; }",
         "usedStructName": "core.Config_Extensions",
         "required": true,
         "public": true,
@@ -28292,6 +28314,17 @@
         "required": true,
         "public": true,
         "comments": []
+      },
+      {
+        "name": "GlobalDir",
+        "jsonName": "GlobalDir",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Optional global extensions directory shared across all users"
+        ]
       }
     ],
     "comments": []
@@ -30692,6 +30725,28 @@
   {
     "filepath": "../internal/database/models/models.go",
     "filename": "models.go",
+    "name": "MangaToReadItem",
+    "formattedName": "Models_MangaToReadItem",
+    "package": "models",
+    "fields": [
+      {
+        "name": "MediaID",
+        "jsonName": "mediaId",
+        "goType": "int",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": []
+      }
+    ],
+    "comments": [],
+    "embeddedStructNames": [
+      "models.BaseModel"
+    ]
+  },
+  {
+    "filepath": "../internal/database/models/models.go",
+    "filename": "models.go",
     "name": "ChapterDownloadQueueItem",
     "formattedName": "Models_ChapterDownloadQueueItem",
     "package": "models",
@@ -30730,7 +30785,42 @@
         "typescriptType": "string",
         "required": true,
         "public": true,
-        "comments": []
+        "comments": [
+          " Calculated number for folder naming"
+        ]
+      },
+      {
+        "name": "DisplayChapterNumber",
+        "jsonName": "displayChapterNumber",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Original chapter number for UI display"
+        ]
+      },
+      {
+        "name": "ChapterTitle",
+        "jsonName": "chapterTitle",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Title from the source (e.g., \"Group 2 Chapter 1\")"
+        ]
+      },
+      {
+        "name": "ChapterIndex",
+        "jsonName": "chapterIndex",
+        "goType": "uint",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Index from the source for ordering"
+        ]
       },
       {
         "name": "PageData",
@@ -31037,6 +31127,83 @@
     ],
     "comments": [
       " TorrentstreamHistory used by both torrent streaming and debrid streaming to store the last selected batch that was used for each media."
+    ],
+    "embeddedStructNames": [
+      "models.BaseModel"
+    ]
+  },
+  {
+    "filepath": "../internal/database/models/models.go",
+    "filename": "models.go",
+    "name": "TorrentPreMatch",
+    "formattedName": "Models_TorrentPreMatch",
+    "package": "models",
+    "fields": [
+      {
+        "name": "Destination",
+        "jsonName": "destination",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " The download destination path"
+        ]
+      },
+      {
+        "name": "MediaId",
+        "jsonName": "mediaId",
+        "goType": "int",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": [
+          " The AniList media ID"
+        ]
+      }
+    ],
+    "comments": [
+      " TorrentPreMatch stores the association between a torrent download destination and the anime media ID.",
+      " This allows the scanner to skip fuzzy matching and directly associate files with the correct anime",
+      " when the user downloads a torrent from an anime's page."
+    ],
+    "embeddedStructNames": [
+      "models.BaseModel"
+    ]
+  },
+  {
+    "filepath": "../internal/database/models/models.go",
+    "filename": "models.go",
+    "name": "TorrentMediaAssociation",
+    "formattedName": "Models_TorrentMediaAssociation",
+    "package": "models",
+    "fields": [
+      {
+        "name": "InfoHash",
+        "jsonName": "infoHash",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " The torrent info hash"
+        ]
+      },
+      {
+        "name": "MediaId",
+        "jsonName": "mediaId",
+        "goType": "int",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": [
+          " The AniList media ID"
+        ]
+      }
+    ],
+    "comments": [
+      " TorrentMediaAssociation stores the association between a torrent info hash and the anime media ID.",
+      " This allows tracking download progress for specific anime without relying on path matching."
     ],
     "embeddedStructNames": [
       "models.BaseModel"
@@ -34258,6 +34425,35 @@
         "required": false,
         "public": false,
         "comments": []
+      },
+      {
+        "name": "currentSessionID",
+        "jsonName": "currentSessionID",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "currentSessionMu",
+        "jsonName": "currentSessionMu",
+        "goType": "sync.Mutex",
+        "typescriptType": "Mutex",
+        "usedTypescriptType": "Mutex",
+        "usedStructName": "sync.Mutex",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "updateProgressForSessionFunc",
+        "jsonName": "updateProgressForSessionFunc",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": false,
+        "comments": []
       }
     ],
     "comments": [
@@ -34391,6 +34587,15 @@
         "usedTypescriptType": "NativePlayer_NativePlayer",
         "usedStructName": "nativeplayer.NativePlayer",
         "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "UpdateProgressForSessionFunc",
+        "jsonName": "UpdateProgressForSessionFunc",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
         "public": true,
         "comments": []
       }
@@ -40239,6 +40444,15 @@
         "comments": []
       },
       {
+        "name": "globalExtensionDir",
+        "jsonName": "globalExtensionDir",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
         "name": "gojaExtensions",
         "jsonName": "gojaExtensions",
         "goType": "",
@@ -40678,6 +40892,17 @@
         "comments": []
       },
       {
+        "name": "GlobalExtensionDir",
+        "jsonName": "GlobalExtensionDir",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Optional: shared extensions directory for all users"
+        ]
+      },
+      {
         "name": "WSEventManager",
         "jsonName": "WSEventManager",
         "goType": "events.WSEventManagerInterface",
@@ -41067,6 +41292,15 @@
         "required": true,
         "public": false,
         "comments": []
+      },
+      {
+        "name": "closed",
+        "jsonName": "closed",
+        "goType": "bool",
+        "typescriptType": "boolean",
+        "required": true,
+        "public": false,
+        "comments": []
       }
     ],
     "comments": []
@@ -41183,6 +41417,17 @@
         "usedTypescriptType": "metrics",
         "usedStructName": "goja_runtime.metrics",
         "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "cleanupFns",
+        "jsonName": "cleanupFns",
+        "goType": "[]CleanupFunc",
+        "typescriptType": "Array\u003cCleanupFunc\u003e",
+        "usedTypescriptType": "CleanupFunc",
+        "usedStructName": "goja_runtime.CleanupFunc",
+        "required": false,
         "public": false,
         "comments": []
       }
@@ -42283,6 +42528,47 @@
       }
     ],
     "comments": []
+  },
+  {
+    "filepath": "../internal/handlers/torrent_client.go",
+    "filename": "torrent_client.go",
+    "name": "MediaDownloadStatus",
+    "formattedName": "MediaDownloadStatus",
+    "package": "handlers",
+    "fields": [
+      {
+        "name": "MediaId",
+        "jsonName": "mediaId",
+        "goType": "int",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "Status",
+        "jsonName": "status",
+        "goType": "torrent_client.TorrentStatus",
+        "typescriptType": "TorrentClient_TorrentStatus",
+        "usedTypescriptType": "TorrentClient_TorrentStatus",
+        "usedStructName": "torrent_client.TorrentStatus",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "Progress",
+        "jsonName": "progress",
+        "goType": "float64",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": []
+      }
+    ],
+    "comments": [
+      " MediaDownloadStatus represents the download status of a media item"
+    ]
   },
   {
     "filepath": "../internal/hook/hook.go",
@@ -48456,6 +48742,28 @@
         "required": false,
         "public": false,
         "comments": []
+      },
+      {
+        "name": "currentSessionID",
+        "jsonName": "currentSessionID",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": false,
+        "comments": [
+          " The session ID of the user who initiated the current playback"
+        ]
+      },
+      {
+        "name": "updateProgressForSessionFunc",
+        "jsonName": "updateProgressForSessionFunc",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": false,
+        "comments": [
+          " Session-aware progress update function"
+        ]
       }
     ],
     "comments": []
@@ -48974,6 +49282,17 @@
         "required": false,
         "public": true,
         "comments": []
+      },
+      {
+        "name": "UpdateProgressForSessionFunc",
+        "jsonName": "UpdateProgressForSessionFunc",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Session-aware progress update function"
+        ]
       }
     ],
     "comments": []
@@ -49927,6 +50246,15 @@
         "required": true,
         "public": true,
         "comments": []
+      },
+      {
+        "name": "PreMatchMap",
+        "jsonName": "PreMatchMap",
+        "goType": "map[string]int",
+        "typescriptType": "Record\u003cstring, number\u003e",
+        "required": false,
+        "public": true,
+        "comments": []
       }
     ],
     "comments": []
@@ -50487,6 +50815,15 @@
         "goType": "string",
         "typescriptType": "string",
         "required": true,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "PreMatchMap",
+        "jsonName": "PreMatchMap",
+        "goType": "map[string]int",
+        "typescriptType": "Record\u003cstring, number\u003e",
+        "required": false,
         "public": true,
         "comments": []
       }
@@ -52684,6 +53021,211 @@
     "comments": []
   },
   {
+    "filepath": "../internal/manga/auto_downloader.go",
+    "filename": "auto_downloader.go",
+    "name": "AutoDownloader",
+    "formattedName": "Manga_AutoDownloader",
+    "package": "manga",
+    "fields": [
+      {
+        "name": "logger",
+        "jsonName": "logger",
+        "goType": "zerolog.Logger",
+        "typescriptType": "Logger",
+        "usedTypescriptType": "Logger",
+        "usedStructName": "zerolog.Logger",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "downloader",
+        "jsonName": "downloader",
+        "goType": "Downloader",
+        "typescriptType": "Manga_Downloader",
+        "usedTypescriptType": "Manga_Downloader",
+        "usedStructName": "manga.Downloader",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "repository",
+        "jsonName": "repository",
+        "goType": "Repository",
+        "typescriptType": "Manga_Repository",
+        "usedTypescriptType": "Manga_Repository",
+        "usedStructName": "manga.Repository",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "wsEventManager",
+        "jsonName": "wsEventManager",
+        "goType": "events.WSEventManagerInterface",
+        "typescriptType": "Events_WSEventManagerInterface",
+        "usedTypescriptType": "Events_WSEventManagerInterface",
+        "usedStructName": "events.WSEventManagerInterface",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "getMangaCollection",
+        "jsonName": "getMangaCollection",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "mu",
+        "jsonName": "mu",
+        "goType": "sync.Mutex",
+        "typescriptType": "Mutex",
+        "usedTypescriptType": "Mutex",
+        "usedStructName": "sync.Mutex",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "running",
+        "jsonName": "running",
+        "goType": "bool",
+        "typescriptType": "boolean",
+        "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "stopCh",
+        "jsonName": "stopCh",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "lastCheckTime",
+        "jsonName": "lastCheckTime",
+        "goType": "time.Time",
+        "typescriptType": "string",
+        "usedStructName": "time.Time",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "checkInterval",
+        "jsonName": "checkInterval",
+        "goType": "time.Duration",
+        "typescriptType": "Duration",
+        "usedTypescriptType": "Duration",
+        "usedStructName": "time.Duration",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "rateLimitDelay",
+        "jsonName": "rateLimitDelay",
+        "goType": "time.Duration",
+        "typescriptType": "Duration",
+        "usedTypescriptType": "Duration",
+        "usedStructName": "time.Duration",
+        "required": false,
+        "public": false,
+        "comments": [
+          " Delay between checking each manga"
+        ]
+      },
+      {
+        "name": "minDownloadPct",
+        "jsonName": "minDownloadPct",
+        "goType": "float64",
+        "typescriptType": "number",
+        "required": true,
+        "public": false,
+        "comments": [
+          " Minimum percentage of chapters downloaded to trigger auto-download"
+        ]
+      }
+    ],
+    "comments": [
+      " AutoDownloader automatically downloads new chapters for manga in the reading list",
+      " that have 90%+ of their chapters already downloaded.",
+      " It uses the same provider/source that each manga entry was originally downloaded from.",
+      " It skips manga that are marked as FINISHED on AniList."
+    ]
+  },
+  {
+    "filepath": "../internal/manga/auto_downloader.go",
+    "filename": "auto_downloader.go",
+    "name": "NewAutoDownloaderOptions",
+    "formattedName": "Manga_NewAutoDownloaderOptions",
+    "package": "manga",
+    "fields": [
+      {
+        "name": "Logger",
+        "jsonName": "Logger",
+        "goType": "zerolog.Logger",
+        "typescriptType": "Logger",
+        "usedTypescriptType": "Logger",
+        "usedStructName": "zerolog.Logger",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "Downloader",
+        "jsonName": "Downloader",
+        "goType": "Downloader",
+        "typescriptType": "Manga_Downloader",
+        "usedTypescriptType": "Manga_Downloader",
+        "usedStructName": "manga.Downloader",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "Repository",
+        "jsonName": "Repository",
+        "goType": "Repository",
+        "typescriptType": "Manga_Repository",
+        "usedTypescriptType": "Manga_Repository",
+        "usedStructName": "manga.Repository",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "WSEventManager",
+        "jsonName": "WSEventManager",
+        "goType": "events.WSEventManagerInterface",
+        "typescriptType": "Events_WSEventManagerInterface",
+        "usedTypescriptType": "Events_WSEventManagerInterface",
+        "usedStructName": "events.WSEventManagerInterface",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "GetMangaCollection",
+        "jsonName": "GetMangaCollection",
+        "goType": "",
+        "typescriptType": "any",
+        "required": true,
+        "public": true,
+        "comments": []
+      }
+    ],
+    "comments": []
+  },
+  {
     "filepath": "../internal/manga/chapter_container.go",
     "filename": "chapter_container.go",
     "name": "ChapterContainer",
@@ -53273,7 +53815,20 @@
         "typescriptType": "string",
         "required": true,
         "public": true,
-        "comments": []
+        "comments": [
+          " Used for folder naming (calculated)"
+        ]
+      },
+      {
+        "name": "DisplayChapterNumber",
+        "jsonName": "displayChapterNumber",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Original chapter number for UI display"
+        ]
       }
     ],
     "comments": []
@@ -53658,7 +54213,42 @@
         "typescriptType": "string",
         "required": true,
         "public": true,
-        "comments": []
+        "comments": [
+          " Calculated number for folder naming"
+        ]
+      },
+      {
+        "name": "DisplayChapterNumber",
+        "jsonName": "displayChapterNumber",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Original chapter number for UI display (e.g., \"50.5\")"
+        ]
+      },
+      {
+        "name": "ChapterTitle",
+        "jsonName": "chapterTitle",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Title from the source (e.g., \"Group 2 Chapter 1\")"
+        ]
+      },
+      {
+        "name": "ChapterIndex",
+        "jsonName": "chapterIndex",
+        "goType": "uint",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Index from the source for ordering"
+        ]
       }
     ],
     "comments": []
@@ -53738,6 +54328,49 @@
         "required": true,
         "public": true,
         "comments": []
+      }
+    ],
+    "comments": []
+  },
+  {
+    "filepath": "../internal/manga/downloader/chapter_downloader.go",
+    "filename": "chapter_downloader.go",
+    "name": "ChapterMetadata",
+    "formattedName": "ChapterDownloader_ChapterMetadata",
+    "package": "chapter_downloader",
+    "fields": [
+      {
+        "name": "DisplayChapterNumber",
+        "jsonName": "displayChapterNumber",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Original chapter number for UI display (e.g., \"50.5\")"
+        ]
+      },
+      {
+        "name": "ChapterTitle",
+        "jsonName": "chapterTitle",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Title from the source"
+        ]
+      },
+      {
+        "name": "ChapterIndex",
+        "jsonName": "chapterIndex",
+        "goType": "uint",
+        "typescriptType": "number",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Index from the source for ordering"
+        ]
       }
     ],
     "comments": []
@@ -73988,6 +74621,149 @@
     "comments": []
   },
   {
+    "filepath": "../internal/session/session.go",
+    "filename": "session.go",
+    "name": "Session",
+    "formattedName": "Session",
+    "package": "session",
+    "fields": [
+      {
+        "name": "ID",
+        "jsonName": "id",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "Token",
+        "jsonName": "token",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Anilist JWT token"
+        ]
+      },
+      {
+        "name": "Username",
+        "jsonName": "username",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": true,
+        "comments": [
+          " Anilist username"
+        ]
+      },
+      {
+        "name": "Viewer",
+        "jsonName": "viewer",
+        "goType": "anilist.GetViewer_Viewer",
+        "typescriptType": "AL_GetViewer_Viewer",
+        "usedTypescriptType": "AL_GetViewer_Viewer",
+        "usedStructName": "anilist.GetViewer_Viewer",
+        "required": false,
+        "public": true,
+        "comments": [
+          " Anilist viewer data"
+        ]
+      },
+      {
+        "name": "CreatedAt",
+        "jsonName": "createdAt",
+        "goType": "time.Time",
+        "typescriptType": "string",
+        "usedStructName": "time.Time",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "LastAccessed",
+        "jsonName": "lastAccessed",
+        "goType": "time.Time",
+        "typescriptType": "string",
+        "usedStructName": "time.Time",
+        "required": false,
+        "public": true,
+        "comments": []
+      },
+      {
+        "name": "IsSimulated",
+        "jsonName": "isSimulated",
+        "goType": "bool",
+        "typescriptType": "boolean",
+        "required": true,
+        "public": true,
+        "comments": [
+          " True if not logged in to Anilist"
+        ]
+      }
+    ],
+    "comments": [
+      " Session represents a browser session with its own Anilist authentication"
+    ]
+  },
+  {
+    "filepath": "../internal/session/session.go",
+    "filename": "session.go",
+    "name": "Store",
+    "formattedName": "Store",
+    "package": "session",
+    "fields": [
+      {
+        "name": "sessions",
+        "jsonName": "sessions",
+        "goType": "map[string]Session",
+        "typescriptType": "Record\u003cstring, Session\u003e",
+        "usedTypescriptType": "Session",
+        "usedStructName": "session.Session",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "clients",
+        "jsonName": "clients",
+        "goType": "map[string]anilist.AnilistClient",
+        "typescriptType": "Record\u003cstring, AL_AnilistClient\u003e",
+        "usedTypescriptType": "AL_AnilistClient",
+        "usedStructName": "anilist.AnilistClient",
+        "required": false,
+        "public": false,
+        "comments": [
+          " Per-session Anilist clients"
+        ]
+      },
+      {
+        "name": "mu",
+        "jsonName": "mu",
+        "goType": "sync.RWMutex",
+        "typescriptType": "RWMutex",
+        "usedTypescriptType": "RWMutex",
+        "usedStructName": "sync.RWMutex",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "cacheDir",
+        "jsonName": "cacheDir",
+        "goType": "string",
+        "typescriptType": "string",
+        "required": true,
+        "public": false,
+        "comments": []
+      }
+    ],
+    "comments": [
+      " Store manages all active sessions"
+    ]
+  },
+  {
     "filepath": "../internal/test_utils/data.go",
     "filename": "data.go",
     "name": "Config",
@@ -77226,7 +78002,7 @@
       {
         "name": "MaxRatio",
         "jsonName": "max_ratio",
-        "goType": "int",
+        "goType": "float64",
         "typescriptType": "number",
         "required": true,
         "public": true,
@@ -77244,7 +78020,7 @@
       {
         "name": "RatioLimit",
         "jsonName": "ratio_limit",
-        "goType": "int",
+        "goType": "float64",
         "typescriptType": "number",
         "required": true,
         "public": true,
@@ -83557,6 +84333,19 @@
         "required": false,
         "public": false,
         "comments": []
+      },
+      {
+        "name": "timers",
+        "jsonName": "timers",
+        "goType": "map[K]time.Timer",
+        "typescriptType": "Record\u003cK, Timer\u003e",
+        "usedTypescriptType": "Timer",
+        "usedStructName": "time.Timer",
+        "required": false,
+        "public": false,
+        "comments": [
+          " Track expiration timers for cleanup"
+        ]
       }
     ],
     "comments": [
@@ -83577,6 +84366,17 @@
         "typescriptType": "Util_RWMutexMap",
         "usedTypescriptType": "Util_RWMutexMap",
         "usedStructName": "util.RWMutexMap",
+        "required": false,
+        "public": false,
+        "comments": []
+      },
+      {
+        "name": "cleanupOnce",
+        "jsonName": "cleanupOnce",
+        "goType": "sync.Once",
+        "typescriptType": "Once",
+        "usedTypescriptType": "Once",
+        "usedStructName": "sync.Once",
         "required": false,
         "public": false,
         "comments": []

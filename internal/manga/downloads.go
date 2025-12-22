@@ -171,11 +171,10 @@ func (r *Repository) GetDownloadedChapterContainers(mangaCollection *anilist.Man
 			for _, chapter := range container.Chapters {
 				// For each chapter, check if the chapter directory exists
 				for _, dir := range chapterDirs {
-					// Use Index+1 as chapter number (same as download logic)
-					chapterNumber := fmt.Sprintf("%d", chapter.Index+1)
-					// Check standard format: {provider}_{mediaId}_{escapedChapterId}_{chapterNumber}
+					// Calculate chapter number using same logic as download
+					chapterNumber := calculateChapterNumberForMatch(chapter.Chapter, chapter.Index, container)
 					expectedFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapterNumber, chapter.Title, chapter.Index)
-					// Also check old format using original chapter number for backwards compatibility
+					// Also check with original chapter number for backwards compatibility
 					oldFormat := chapter_downloader.FormatChapterDirName(provider, mediaId, chapter.ID, chapter.Chapter, chapter.Title, chapter.Index)
 					if dir == expectedFormat || dir == oldFormat {
 						downloadedContainer.Chapters = append(downloadedContainer.Chapters, chapter)
@@ -326,4 +325,12 @@ func (r *Repository) getDownloadedMangaPageContainer(
 	r.logger.Debug().Str("chapterId", chapterId).Msg("manga: Found downloaded chapter")
 
 	return container, nil
+}
+
+// calculateChapterNumberForMatch calculates the chapter number for matching downloaded chapters.
+// Same logic as calculateChapterNumber in download.go - uses index + 1.
+func calculateChapterNumberForMatch(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
+	// Use index + 1 as the chapter number (1-indexed)
+	// Index 0 = Chapter 1, Index 1 = Chapter 2, etc.
+	return fmt.Sprintf("%d", chapterIndex+1)
 }

@@ -141,6 +141,22 @@ func (a *App) initModulesOnce() {
 	a.MangaDownloader.Start()
 
 	// +---------------------+
+	// | Manga Auto Downloader |
+	// +---------------------+
+
+	a.MangaAutoDownloader = manga.NewAutoDownloader(&manga.NewAutoDownloaderOptions{
+		Logger:         a.Logger,
+		Downloader:     a.MangaDownloader,
+		Repository:     a.MangaRepository,
+		WSEventManager: a.WSEventManager,
+		GetMangaCollection: func() (*anilist.MangaCollection, error) {
+			return a.GetMangaCollection(false)
+		},
+	})
+
+	a.MangaAutoDownloader.Start()
+
+	// +---------------------+
 	// |    Media Stream     |
 	// +---------------------+
 
