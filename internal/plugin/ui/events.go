@@ -53,10 +53,6 @@ const (
 	ClientDOMElementUpdatedEvent ClientEventType = "dom:element-updated"  // When a DOM element is updated
 	ClientDOMEventTriggeredEvent ClientEventType = "dom:event-triggered"  // When a DOM event is triggered
 	ClientDOMReadyEvent          ClientEventType = "dom:ready"            // When a DOM element is ready
-
-	// Playback notification events (available to all plugins)
-	ClientPlaybackStartedEvent ClientEventType = "playback:started" // When video/stream playback starts
-	ClientPlaybackStoppedEvent ClientEventType = "playback:stopped" // When video/stream playback stops
 )
 
 type ClientRenderTrayEventPayload struct{}
@@ -151,18 +147,6 @@ type ClientDOMStopObserveEventPayload struct {
 }
 
 type ClientDOMReadyEventPayload struct {
-}
-
-// ClientPlaybackStartedEventPayload is sent when video/stream playback starts
-type ClientPlaybackStartedEventPayload struct {
-	MediaID int    `json:"mediaId"` // AniList media ID
-	Type    string `json:"type"`    // "local", "onlinestream", "torrentstream", "debridstream", "mediastream"
-}
-
-// ClientPlaybackStoppedEventPayload is sent when video/stream playback stops
-type ClientPlaybackStoppedEventPayload struct {
-	MediaID int    `json:"mediaId"` // AniList media ID
-	Type    string `json:"type"`    // "local", "onlinestream", "torrentstream", "debridstream", "mediastream"
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -29,8 +29,6 @@ func (s *ScreenManager) bind(ctxObj *goja.Object) {
 	_ = screenObj.Set("navigateTo", s.jsNavigateTo)
 	_ = screenObj.Set("reload", s.jsReload)
 	_ = screenObj.Set("loadCurrent", s.jsLoadCurrent)
-	_ = screenObj.Set("onPlaybackStarted", s.jsOnPlaybackStarted)
-	_ = screenObj.Set("onPlaybackStopped", s.jsOnPlaybackStopped)
 
 	_ = ctxObj.Set("screen", screenObj)
 }
@@ -96,60 +94,6 @@ func (s *ScreenManager) jsOnNavigate(callback goja.Callable) goja.Value {
 					"searchParams": queryMap,
 				}
 
-				_, err := callback(goja.Undefined(), s.ctx.vm.ToValue(ret))
-				return err
-			})
-		}
-	})
-
-	return goja.Undefined()
-}
-
-// jsOnPlaybackStarted registers a callback to be called when video/stream playback starts
-// This is useful for plugins that need to stop playing audio when the user starts watching
-//
-//	Example:
-//	ctx.screen.onPlaybackStarted((event) => {
-//		console.log("Playback started", event.mediaId, event.type);
-//		// Stop playing theme song
-//	});
-func (s *ScreenManager) jsOnPlaybackStarted(callback goja.Callable) goja.Value {
-	eventListener := s.ctx.RegisterEventListener(ClientPlaybackStartedEvent)
-
-	eventListener.SetCallback(func(event *ClientPluginEvent) {
-		var payload ClientPlaybackStartedEventPayload
-		if event.ParsePayloadAs(ClientPlaybackStartedEvent, &payload) {
-			s.ctx.scheduler.ScheduleAsync(func() error {
-				ret := map[string]interface{}{
-					"mediaId": payload.MediaID,
-					"type":    payload.Type,
-				}
-				_, err := callback(goja.Undefined(), s.ctx.vm.ToValue(ret))
-				return err
-			})
-		}
-	})
-
-	return goja.Undefined()
-}
-
-// jsOnPlaybackStopped registers a callback to be called when video/stream playback stops
-//
-//	Example:
-//	ctx.screen.onPlaybackStopped((event) => {
-//		console.log("Playback stopped", event.mediaId, event.type);
-//	});
-func (s *ScreenManager) jsOnPlaybackStopped(callback goja.Callable) goja.Value {
-	eventListener := s.ctx.RegisterEventListener(ClientPlaybackStoppedEvent)
-
-	eventListener.SetCallback(func(event *ClientPluginEvent) {
-		var payload ClientPlaybackStoppedEventPayload
-		if event.ParsePayloadAs(ClientPlaybackStoppedEvent, &payload) {
-			s.ctx.scheduler.ScheduleAsync(func() error {
-				ret := map[string]interface{}{
-					"mediaId": payload.MediaID,
-					"type":    payload.Type,
-				}
 				_, err := callback(goja.Undefined(), s.ctx.vm.ToValue(ret))
 				return err
 			})
