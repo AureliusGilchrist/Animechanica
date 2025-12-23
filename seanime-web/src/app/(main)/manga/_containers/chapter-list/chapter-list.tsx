@@ -85,9 +85,9 @@ export function ChapterList(props: ChapterListProps) {
 
     // Calculate sequential chapter numbers based on position in the full list
     // This gives us the correct "Chapter 652" style numbering
-    // Chapters are typically in reverse order (newest first), so we iterate from the end
+    // Chapters are in newest-first order (highest chapter at index 0)
     // For decimal chapters (e.g., 50.5), use the integer part
-    // For non-decimal chapters, count sequentially from 1
+    // For non-decimal chapters, count down from total
     const chapterIdToSequentialNumberMap = React.useMemo(() => {
         const map = new Map<string, number>()
         const chapters = chapterContainer?.chapters ?? []
@@ -100,9 +100,10 @@ export function ChapterList(props: ChapterListProps) {
             }
         }
         
-        // Iterate from end to start (oldest to newest) to assign sequential numbers
-        let currentSeqNum = 1
-        for (let i = chapters.length - 1; i >= 0; i--) {
+        // Iterate from start (newest/highest chapter) and count down
+        // First chapter in list (index 0) is the highest chapter number
+        let currentSeqNum = nonDecimalCount
+        for (let i = 0; i < chapters.length; i++) {
             const chapter = chapters[i]
             const chapterStr = chapter.chapter
             
@@ -111,9 +112,9 @@ export function ChapterList(props: ChapterListProps) {
                 const intPart = Math.floor(getDecimalFromChapter(chapterStr))
                 map.set(chapter.id, intPart)
             } else {
-                // Non-decimal chapter - assign sequential number
+                // Non-decimal chapter - assign sequential number (counting down)
                 map.set(chapter.id, currentSeqNum)
-                currentSeqNum++
+                currentSeqNum--
             }
         }
 
