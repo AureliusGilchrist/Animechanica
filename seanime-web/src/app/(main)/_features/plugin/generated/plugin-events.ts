@@ -34,6 +34,9 @@ export enum PluginClientEvents {
     DOMElementUpdated = "dom:element-updated",
     DOMEventTriggered = "dom:event-triggered",
     DOMReady = "dom:ready",
+    // Playback notification events
+    PlaybackStarted = "playback:started",
+    PlaybackStopped = "playback:stopped",
 }
 
 export enum PluginServerEvents {
@@ -565,6 +568,41 @@ export function usePluginSendDOMReadyEvent() {
 
     return {
         sendDOMReadyEvent,
+    }
+}
+
+// Playback notification events
+export type Plugin_Client_PlaybackStartedEventPayload = {
+    mediaId: number
+    type: "local" | "onlinestream" | "torrentstream" | "debridstream" | "mediastream"
+}
+
+export function usePluginSendPlaybackStartedEvent() {
+    const { sendPluginMessage } = useWebsocketSender()
+
+    const sendPlaybackStartedEvent = useCallback((payload: Plugin_Client_PlaybackStartedEventPayload, extensionID?: string) => {
+        sendPluginMessage(PluginClientEvents.PlaybackStarted, payload, extensionID)
+    }, [])
+
+    return {
+        sendPlaybackStartedEvent,
+    }
+}
+
+export type Plugin_Client_PlaybackStoppedEventPayload = {
+    mediaId: number
+    type: "local" | "onlinestream" | "torrentstream" | "debridstream" | "mediastream"
+}
+
+export function usePluginSendPlaybackStoppedEvent() {
+    const { sendPluginMessage } = useWebsocketSender()
+
+    const sendPlaybackStoppedEvent = useCallback((payload: Plugin_Client_PlaybackStoppedEventPayload, extensionID?: string) => {
+        sendPluginMessage(PluginClientEvents.PlaybackStopped, payload, extensionID)
+    }, [])
+
+    return {
+        sendPlaybackStoppedEvent,
     }
 }
 

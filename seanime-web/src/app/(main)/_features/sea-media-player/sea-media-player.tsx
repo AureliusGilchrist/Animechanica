@@ -24,6 +24,7 @@ import {
     __seaMediaPlayer_mutedAtom,
     __seaMediaPlayer_volumeAtom,
 } from "@/app/(main)/_features/sea-media-player/sea-media-player.atoms"
+import { usePluginPlaybackNotifications } from "@/app/(main)/_features/plugin/plugin-playback-notifications"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { LuffyError } from "@/components/shared/luffy-error"
 import { vidstackLayoutIcons } from "@/components/shared/vidstack"
@@ -111,6 +112,9 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
     } = props
 
     const serverStatus = useServerStatus()
+
+    // Plugin playback notifications - notify plugins when playback starts (e.g., to stop theme music)
+    const { notifyPlaybackStarted } = usePluginPlaybackNotifications()
 
     const [duration, setDuration] = React.useState(0)
 
@@ -332,6 +336,11 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
         _onCanPlay?.(e, event)
 
         canPlayRef.current = true
+
+        // Notify plugins that playback has started (e.g., to stop theme music)
+        if (media?.id) {
+            notifyPlaybackStarted(media.id, "onlinestream")
+        }
 
         if (__isDesktop__ && wentToNextEpisodeRef.current && wasFullscreenRef.current) {
             logger("MEDIA PLAYER").info("Restoring fullscreen")

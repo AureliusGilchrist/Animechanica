@@ -231,8 +231,8 @@ func (u *UI) HandleWSEvent(event *events.WebsocketClientEvent) {
 			return
 		}
 
-		// Process normal event
-		clientEvent := NewClientPluginEvent(payload)
+		// Process normal event - include client ID for session-based isolation
+		clientEvent := NewClientPluginEventWithClientID(payload, event.ClientID)
 		if clientEvent == nil {
 			u.logger.Error().Interface("payload", payload).Msg("plugin/ui: Failed to create client plugin event")
 			return

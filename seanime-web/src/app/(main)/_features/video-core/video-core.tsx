@@ -53,6 +53,7 @@ import {
     vc_formatTime,
     vc_logGeneralInfo,
 } from "@/app/(main)/_features/video-core/video-core.utils"
+import { usePluginPlaybackNotifications, PlaybackType } from "@/app/(main)/_features/plugin/plugin-playback-notifications"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
 import { __torrentSearch_selectedTorrentsAtom } from "@/app/(main)/entry/_containers/torrent-search/torrent-search-container"
 import {
@@ -305,6 +306,9 @@ export function VideoCore(props: VideoCoreProps) {
     const { mutate: setAnimeDiscordActivity } = useSetDiscordAnimeActivityWithProgress()
     const { mutate: updateAnimeDiscordActivity } = useUpdateDiscordAnimeActivityWithProgress()
     const { mutate: cancelDiscordActivity } = useCancelDiscordActivity()
+
+    // Plugin playback notifications - notify plugins when playback starts/stops
+    const { notifyPlaybackStarted, notifyPlaybackStopped, resetNotificationState } = usePluginPlaybackNotifications()
 
     React.useEffect(() => {
         const interval = setInterval(() => {
@@ -660,6 +664,17 @@ export function VideoCore(props: VideoCoreProps) {
     const handlePlay = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         log.info("Video resumed")
         onPlay?.()
+
+        // Notify plugins that playback has started (e.g., to stop theme music)
+        if (state.playbackInfo?.media?.id) {
+            const streamType = state.playbackInfo.streamType
+            let playbackType: PlaybackType = "local"
+            if (streamType === "torrent") playbackType = "torrentstream"
+            else if (streamType === "localfile") playbackType = "mediastream"
+            else if (streamType === "debrid") playbackType = "debridstream"
+
+            notifyPlaybackStarted(state.playbackInfo.media.id, playbackType)
+        }
     }
 
     const handlePause = (e: React.SyntheticEvent<HTMLVideoElement>) => {

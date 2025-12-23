@@ -15,6 +15,9 @@ type ClientPluginEvent struct {
 	ExtensionID string          `json:"extensionId,omitempty"`
 	Type        ClientEventType `json:"type"`
 	Payload     interface{}     `json:"payload"`
+	// ClientID is the ID of the client that sent the event
+	// Used for session-based isolation of plugin events
+	ClientID string `json:"clientId,omitempty"`
 }
 
 const (
@@ -50,6 +53,10 @@ const (
 	ClientDOMElementUpdatedEvent ClientEventType = "dom:element-updated"  // When a DOM element is updated
 	ClientDOMEventTriggeredEvent ClientEventType = "dom:event-triggered"  // When a DOM event is triggered
 	ClientDOMReadyEvent          ClientEventType = "dom:ready"            // When a DOM element is ready
+
+	// Playback notification events (available to all plugins)
+	ClientPlaybackStartedEvent ClientEventType = "playback:started" // When video/stream playback starts
+	ClientPlaybackStoppedEvent ClientEventType = "playback:stopped" // When video/stream playback stops
 )
 
 type ClientRenderTrayEventPayload struct{}
@@ -144,6 +151,18 @@ type ClientDOMStopObserveEventPayload struct {
 }
 
 type ClientDOMReadyEventPayload struct {
+}
+
+// ClientPlaybackStartedEventPayload is sent when video/stream playback starts
+type ClientPlaybackStartedEventPayload struct {
+	MediaID int    `json:"mediaId"` // AniList media ID
+	Type    string `json:"type"`    // "local", "onlinestream", "torrentstream", "debridstream", "mediastream"
+}
+
+// ClientPlaybackStoppedEventPayload is sent when video/stream playback stops
+type ClientPlaybackStoppedEventPayload struct {
+	MediaID int    `json:"mediaId"` // AniList media ID
+	Type    string `json:"type"`    // "local", "onlinestream", "torrentstream", "debridstream", "mediastream"
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -327,6 +346,15 @@ func NewClientPluginEvent(data map[string]interface{}) *ClientPluginEvent {
 		Type:        ClientEventType(eventType),
 		Payload:     payload,
 	}
+}
+
+// NewClientPluginEventWithClientID creates a new ClientPluginEvent with a client ID
+func NewClientPluginEventWithClientID(data map[string]interface{}, clientID string) *ClientPluginEvent {
+	event := NewClientPluginEvent(data)
+	if event != nil {
+		event.ClientID = clientID
+	}
+	return event
 }
 
 func (e *ClientPluginEvent) ParsePayload(ret interface{}) bool {
