@@ -20,12 +20,13 @@ import { useUpdateEffect } from "@/components/ui/core/hooks"
 import { DataGrid, defineDataGridColumns } from "@/components/ui/datagrid"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Select } from "@/components/ui/select"
+import { Tooltip } from "@/components/ui/tooltip"
 import { useAtom, useSetAtom } from "jotai/react"
 import React from "react"
 import { FaRedo } from "react-icons/fa"
 import { GiOpenBook } from "react-icons/gi"
 import { IoBookOutline, IoLibrary } from "react-icons/io5"
-import { LuSearch } from "react-icons/lu"
+import { LuArrowDownUp, LuBookOpen, LuSearch } from "react-icons/lu"
 import { MdOutlineDownloadForOffline, MdOutlineOfflinePin } from "react-icons/md"
 
 type ChapterListProps = {
@@ -85,24 +86,16 @@ export function ChapterList(props: ChapterListProps) {
 
     // Calculate sequential chapter numbers based on position in the full list
     // This gives us the correct "Chapter 652" style numbering
-    // Chapters are in newest-first order (highest chapter at index 0)
+    // Original chapters array is in oldest-first order (Chapter 1 at index 0)
     // For decimal chapters (e.g., 50.5), use the integer part
-    // For non-decimal chapters, count down from total
+    // For non-decimal chapters, count up from 1
     const chapterIdToSequentialNumberMap = React.useMemo(() => {
         const map = new Map<string, number>()
         const chapters = chapterContainer?.chapters ?? []
         
-        // Count total non-decimal chapters first
-        let nonDecimalCount = 0
-        for (const chapter of chapters) {
-            if (!chapter.chapter.includes(".")) {
-                nonDecimalCount++
-            }
-        }
-        
-        // Iterate from start (newest/highest chapter) and count down
-        // First chapter in list (index 0) is the highest chapter number
-        let currentSeqNum = nonDecimalCount
+        // Iterate through chapters (oldest first) and count up
+        // First chapter in original list (index 0) is Chapter 1
+        let currentSeqNum = 1
         for (let i = 0; i < chapters.length; i++) {
             const chapter = chapters[i]
             const chapterStr = chapter.chapter
@@ -112,9 +105,9 @@ export function ChapterList(props: ChapterListProps) {
                 const intPart = Math.floor(getDecimalFromChapter(chapterStr))
                 map.set(chapter.id, intPart)
             } else {
-                // Non-decimal chapter - assign sequential number (counting down)
+                // Non-decimal chapter - assign sequential number (counting up)
                 map.set(chapter.id, currentSeqNum)
-                currentSeqNum--
+                currentSeqNum++
             }
         }
 
@@ -123,6 +116,41 @@ export function ChapterList(props: ChapterListProps) {
 
     const [showUnreadChapter, setShowUnreadChapter] = React.useState(false)
     const [showDownloadedChapters, setShowDownloadedChapters] = React.useState(false)
+    const [isReversed, setIsReversed] = React.useState(() => {
+        // Restore sort order from localStorage
+        if (typeof window !== "undefined" && mediaId) {
+            const saved = localStorage.getItem(`manga-chapter-list-reversed-${mediaId}`)
+            return saved === "true"
+        }
+        return false
+    })
+    const [paginationState, setPaginationState] = React.useState(() => {
+        // Restore pagination state from localStorage
+        if (typeof window !== "undefined" && mediaId) {
+            const saved = localStorage.getItem(`manga-chapter-list-page-${mediaId}`)
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved) as { pageIndex?: number, pageSize?: number }
+                    return { pageIndex: parsed.pageIndex ?? 0, pageSize: parsed.pageSize ?? 10 }
+                } catch {}
+            }
+        }
+        return { pageIndex: 0, pageSize: 10 }
+    })
+
+    // Persist sort order to localStorage
+    React.useEffect(() => {
+        if (mediaId) {
+            localStorage.setItem(`manga-chapter-list-reversed-${mediaId}`, String(isReversed))
+        }
+    }, [isReversed, mediaId])
+
+    // Persist pagination state to localStorage
+    React.useEffect(() => {
+        if (mediaId) {
+            localStorage.setItem(`manga-chapter-list-page-${mediaId}`, JSON.stringify(paginationState))
+        }
+    }, [paginationState, mediaId])
 
     /**
      * Set selected chapter
@@ -335,7 +363,12 @@ export function ChapterList(props: ChapterListProps) {
     ]), [chapterIdToNumbersMap, chapterIdToSequentialNumberMap, selectedExtension, isSendingDownloadRequest, isChapterDownloaded, getDownloadedChapterForSameProvider, isChapterRead, downloadData, mediaId, handleReadChapter])
 
     const unreadChapters = React.useMemo(() => chapterContainer?.chapters?.filter(ch => retainUnreadChapters(ch)) ?? [], [chapterContainer, entry])
-    const allChapters = React.useMemo(() => chapterContainer?.chapters?.toReversed() ?? [], [chapterContainer])
+    // Default: newest first (reversed from original oldest-first order)
+    // When isReversed: oldest first (original order)
+    const allChapters = React.useMemo(() => {
+        const original = chapterContainer?.chapters ?? []
+        return isReversed ? [...original] : original.toReversed()
+    }, [chapterContainer, isReversed])
 
     /**
      * Set "showUnreadChapter" state if there are unread chapters
@@ -352,10 +385,45 @@ export function ChapterList(props: ChapterListProps) {
         if (showDownloadedChapters) {
             d = d.filter(ch => isChapterDownloaded(ch) || isChapterQueued(ch))
         }
+        // Apply sort order to unread chapters too
+        if (showUnreadChapter && isReversed) {
+            d = [...d].reverse()
+        }
         return d
     }, [
-        showUnreadChapter, unreadChapters, allChapters, showDownloadedChapters, downloadData, selectedExtension,
+        showUnreadChapter, unreadChapters, allChapters, showDownloadedChapters, downloadData, selectedExtension, isReversed,
     ])
+
+    /**
+     * Find the current reading position (first unread chapter) and calculate page index
+     */
+    const currentReadingPosition = React.useMemo(() => {
+        if (!entry.listData?.progress || !chapters.length) return null
+        
+        const progress = entry.listData.progress
+        // Find the first chapter that is unread (sequential number > progress)
+        const firstUnreadIndex = chapters.findIndex(ch => {
+            const seqNum = chapterIdToSequentialNumberMap.get(ch.id)
+            return seqNum !== undefined && seqNum > progress
+        })
+        
+        if (firstUnreadIndex === -1) return null
+        
+        return {
+            index: firstUnreadIndex,
+            pageIndex: Math.floor(firstUnreadIndex / paginationState.pageSize),
+            chapter: chapters[firstUnreadIndex],
+        }
+    }, [chapters, entry.listData?.progress, chapterIdToSequentialNumberMap, paginationState.pageSize])
+
+    /**
+     * Jump to current reading position
+     */
+    const jumpToCurrentPosition = React.useCallback(() => {
+        if (currentReadingPosition) {
+            setPaginationState(prev => ({ ...prev, pageIndex: currentReadingPosition.pageIndex }))
+        }
+    }, [currentReadingPosition])
 
     const {
         rowSelectedChapters,
@@ -578,6 +646,32 @@ export function ChapterList(props: ChapterListProps) {
                                             fieldClass="w-fit"
                                             {...monochromeCheckboxClasses}
                                         />}
+                                        
+                                        <div className="flex items-center gap-2 ml-auto">
+                                            <Tooltip trigger={
+                                                <IconButton
+                                                    intent="gray-subtle"
+                                                    size="sm"
+                                                    icon={<LuArrowDownUp />}
+                                                    onClick={() => setIsReversed(prev => !prev)}
+                                                />
+                                            }>
+                                                {isReversed ? "Showing oldest first" : "Showing newest first"} - Click to reverse
+                                            </Tooltip>
+                                            
+                                            {currentReadingPosition && (
+                                                <Tooltip trigger={
+                                                    <IconButton
+                                                        intent="primary-subtle"
+                                                        size="sm"
+                                                        icon={<LuBookOpen />}
+                                                        onClick={jumpToCurrentPosition}
+                                                    />
+                                                }>
+                                                    Jump to current position (Chapter {chapterIdToSequentialNumberMap.get(currentReadingPosition.chapter.id)})
+                                                </Tooltip>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <ChapterListBulkActions
@@ -595,15 +689,11 @@ export function ChapterList(props: ChapterListProps) {
                                         isLoading={chapterContainerLoading}
                                         rowSelectionPrimaryKey="id"
                                         enableRowSelection={row => (!isChapterDownloaded(row.original) && !isChapterQueued(row.original))}
-                                        initialState={{
-                                            pagination: {
-                                                pageIndex: 0,
-                                                pageSize: 10,
-                                            },
-                                        }}
                                         state={{
                                             rowSelection,
+                                            pagination: paginationState,
                                         }}
+                                        onPaginationChange={setPaginationState}
                                         hideColumns={[
                                             {
                                                 below: 1000,
