@@ -6521,8 +6521,67 @@ type MangaDetailsById_Media struct {
 	Genres          []*string                               "json:\"genres,omitempty\" graphql:\"genres\""
 	Rankings        []*MangaDetailsById_Media_Rankings      "json:\"rankings,omitempty\" graphql:\"rankings\""
 	Characters      *MangaDetailsById_Media_Characters      "json:\"characters,omitempty\" graphql:\"characters\""
+	Staff           *MangaDetailsById_Media_Staff           "json:\"staff,omitempty\" graphql:\"staff\""
 	Recommendations *MangaDetailsById_Media_Recommendations "json:\"recommendations,omitempty\" graphql:\"recommendations\""
 	Relations       *MangaDetailsById_Media_Relations       "json:\"relations,omitempty\" graphql:\"relations\""
+}
+
+type MangaDetailsById_Media_Staff_Edges_Node_Name struct {
+	Full *string "json:\"full,omitempty\" graphql:\"full\""
+}
+
+func (t *MangaDetailsById_Media_Staff_Edges_Node_Name) GetFull() *string {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff_Edges_Node_Name{}
+	}
+	return t.Full
+}
+
+type MangaDetailsById_Media_Staff_Edges_Node struct {
+	Name *MangaDetailsById_Media_Staff_Edges_Node_Name "json:\"name,omitempty\" graphql:\"name\""
+	ID   int                                           "json:\"id\" graphql:\"id\""
+}
+
+func (t *MangaDetailsById_Media_Staff_Edges_Node) GetName() *MangaDetailsById_Media_Staff_Edges_Node_Name {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff_Edges_Node{}
+	}
+	return t.Name
+}
+func (t *MangaDetailsById_Media_Staff_Edges_Node) GetID() int {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff_Edges_Node{}
+	}
+	return t.ID
+}
+
+type MangaDetailsById_Media_Staff_Edges struct {
+	Role *string                                  "json:\"role,omitempty\" graphql:\"role\""
+	Node *MangaDetailsById_Media_Staff_Edges_Node "json:\"node,omitempty\" graphql:\"node\""
+}
+
+func (t *MangaDetailsById_Media_Staff_Edges) GetRole() *string {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff_Edges{}
+	}
+	return t.Role
+}
+func (t *MangaDetailsById_Media_Staff_Edges) GetNode() *MangaDetailsById_Media_Staff_Edges_Node {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff_Edges{}
+	}
+	return t.Node
+}
+
+type MangaDetailsById_Media_Staff struct {
+	Edges []*MangaDetailsById_Media_Staff_Edges "json:\"edges,omitempty\" graphql:\"edges\""
+}
+
+func (t *MangaDetailsById_Media_Staff) GetEdges() []*MangaDetailsById_Media_Staff_Edges {
+	if t == nil {
+		t = &MangaDetailsById_Media_Staff{}
+	}
+	return t.Edges
 }
 
 func (t *MangaDetailsById_Media) GetSiteURL() *string {
@@ -6560,6 +6619,12 @@ func (t *MangaDetailsById_Media) GetCharacters() *MangaDetailsById_Media_Charact
 		t = &MangaDetailsById_Media{}
 	}
 	return t.Characters
+}
+func (t *MangaDetailsById_Media) GetStaff() *MangaDetailsById_Media_Staff {
+	if t == nil {
+		t = &MangaDetailsById_Media{}
+	}
+	return t.Staff
 }
 func (t *MangaDetailsById_Media) GetRecommendations() *MangaDetailsById_Media_Recommendations {
 	if t == nil {

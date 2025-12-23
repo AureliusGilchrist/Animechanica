@@ -84,31 +84,40 @@ export function ChapterList(props: ChapterListProps) {
         return map
     }, [chapterContainer?.chapters])
 
-    // Calculate sequential chapter numbers based on position in the full list
-    // This gives us the correct "Chapter 652" style numbering
-    // Original chapters array is in oldest-first order (Chapter 1 at index 0)
+    // Calculate sequential chapter numbers based on the actual chapter numbers
+    // This gives us the correct "Chapter 652" style numbering regardless of source order
     // For decimal chapters (e.g., 50.5), use the integer part
-    // For non-decimal chapters, count up from 1
+    // For non-decimal chapters, sort by chapter number and assign sequential numbers
     const chapterIdToSequentialNumberMap = React.useMemo(() => {
         const map = new Map<string, number>()
         const chapters = chapterContainer?.chapters ?? []
         
-        // Iterate through chapters (oldest first) and count up
-        // First chapter in original list (index 0) is Chapter 1
-        let currentSeqNum = 1
-        for (let i = 0; i < chapters.length; i++) {
-            const chapter = chapters[i]
+        // Separate decimal and non-decimal chapters
+        const nonDecimalChapters: { id: string, num: number }[] = []
+        const decimalChapters: { id: string, intPart: number }[] = []
+        
+        for (const chapter of chapters) {
             const chapterStr = chapter.chapter
+            const num = getDecimalFromChapter(chapterStr)
             
             if (chapterStr.includes(".")) {
-                // Decimal chapter - use the integer part
-                const intPart = Math.floor(getDecimalFromChapter(chapterStr))
-                map.set(chapter.id, intPart)
+                decimalChapters.push({ id: chapter.id, intPart: Math.floor(num) })
             } else {
-                // Non-decimal chapter - assign sequential number (counting up)
-                map.set(chapter.id, currentSeqNum)
-                currentSeqNum++
+                nonDecimalChapters.push({ id: chapter.id, num })
             }
+        }
+        
+        // Sort non-decimal chapters by their actual chapter number (ascending)
+        nonDecimalChapters.sort((a, b) => a.num - b.num)
+        
+        // Assign sequential numbers based on sorted order
+        for (let i = 0; i < nonDecimalChapters.length; i++) {
+            map.set(nonDecimalChapters[i].id, i + 1)
+        }
+        
+        // For decimal chapters, use the integer part
+        for (const dc of decimalChapters) {
+            map.set(dc.id, dc.intPart)
         }
 
         return map
@@ -378,6 +387,15 @@ export function ChapterList(props: ChapterListProps) {
     }, [unreadChapters?.length])
 
     /**
+     * Reset page index when filtering changes to avoid showing empty pages
+     */
+    const chaptersLengthRef = React.useRef<number | null>(null)
+    React.useEffect(() => {
+        // Reset to page 0 when filter toggles change
+        setPaginationState(prev => ({ ...prev, pageIndex: 0 }))
+    }, [showUnreadChapter, showDownloadedChapters])
+
+    /**
      * Filter chapters based on state
      */
     const chapters = React.useMemo(() => {
@@ -393,6 +411,22 @@ export function ChapterList(props: ChapterListProps) {
     }, [
         showUnreadChapter, unreadChapters, allChapters, showDownloadedChapters, downloadData, selectedExtension, isReversed,
     ])
+    
+    /**
+     * Clamp page index when chapters length changes to prevent empty pages
+     */
+    React.useEffect(() => {
+        if (chaptersLengthRef.current !== null && chaptersLengthRef.current !== chapters.length) {
+            setPaginationState(prev => {
+                const maxPageIndex = Math.max(0, Math.ceil(chapters.length / prev.pageSize) - 1)
+                if (prev.pageIndex > maxPageIndex) {
+                    return { ...prev, pageIndex: maxPageIndex }
+                }
+                return prev
+            })
+        }
+        chaptersLengthRef.current = chapters.length
+    }, [chapters.length])
 
     /**
      * Find the current reading position (first unread chapter) and calculate page index

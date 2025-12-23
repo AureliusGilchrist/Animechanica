@@ -853,6 +853,7 @@ export type AL_MangaDetailsById_Media = {
     genres?: Array<string>
     rankings?: Array<AL_MangaDetailsById_Media_Rankings>
     characters?: AL_MangaDetailsById_Media_Characters
+    staff?: AL_MangaDetailsById_Media_Staff
     recommendations?: AL_MangaDetailsById_Media_Recommendations
     relations?: AL_MangaDetailsById_Media_Relations
 }
@@ -876,6 +877,44 @@ export type AL_MangaDetailsById_Media_Characters_Edges = {
     role?: AL_CharacterRole
     name?: string
     node?: AL_BaseCharacter
+}
+
+/**
+ * - Filepath: internal/api/anilist/client_gen.go
+ * - Filename: client_gen.go
+ * - Package: anilist
+ */
+export type AL_MangaDetailsById_Media_Staff = {
+    edges?: Array<AL_MangaDetailsById_Media_Staff_Edges>
+}
+
+/**
+ * - Filepath: internal/api/anilist/client_gen.go
+ * - Filename: client_gen.go
+ * - Package: anilist
+ */
+export type AL_MangaDetailsById_Media_Staff_Edges = {
+    role?: string
+    node?: AL_MangaDetailsById_Media_Staff_Edges_Node
+}
+
+/**
+ * - Filepath: internal/api/anilist/client_gen.go
+ * - Filename: client_gen.go
+ * - Package: anilist
+ */
+export type AL_MangaDetailsById_Media_Staff_Edges_Node = {
+    name?: AL_MangaDetailsById_Media_Staff_Edges_Node_Name
+    id: number
+}
+
+/**
+ * - Filepath: internal/api/anilist/client_gen.go
+ * - Filename: client_gen.go
+ * - Package: anilist
+ */
+export type AL_MangaDetailsById_Media_Staff_Edges_Node_Name = {
+    full?: string
 }
 
 /**

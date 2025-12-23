@@ -32,6 +32,26 @@ export function MetaSection(props: { entry: Manga_Entry | undefined, details: AL
 
     if (!entry?.media) return null
 
+    const authors = React.useMemo(() => {
+        const edges = details?.staff?.edges ?? []
+        // First try to find authors/story creators
+        let filtered = edges.filter(edge => {
+            const role = edge?.role?.toLowerCase() || ""
+            return role.includes("story") || role.includes("art") || role.includes("original creator")
+        })
+        // If none found, take the first few staff members
+        if (filtered.length === 0) {
+            filtered = edges.slice(0, 3)
+        }
+        return filtered
+            .map(edge => ({
+                id: edge?.node?.id,
+                name: edge?.node?.name?.full ?? "Unknown",
+                role: edge?.role,
+            }))
+            .filter(author => !!author.id && !!author.name)
+    }, [details?.staff?.edges])
+
     const Details = () => (
         <>
             <div
@@ -46,6 +66,28 @@ export function MetaSection(props: { entry: Manga_Entry | undefined, details: AL
             </div>
 
             <AnimeEntryRankings rankings={details?.rankings} />
+
+            {!!authors?.length && (
+                <div
+                    className="flex flex-wrap items-center gap-2 text-sm text-[--muted]"
+                    data-manga-meta-section-authors
+                >
+                    <span className="uppercase tracking-wide text-xs text-[--muted]">
+                        {authors.length > 1 ? "Authors" : "Author"}
+                    </span>
+                    {authors.map(author => (
+                        <SeaLink
+                            key={author.id}
+                            href={`https://anilist.co/staff/${author.id}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-white/20 hover:border-white/60 transition-colors text-[--foreground]"
+                        >
+                            {author.name}
+                            <LuExternalLink className="text-xs" />
+                        </SeaLink>
+                    ))}
+                </div>
+            )}
         </>
     )
 

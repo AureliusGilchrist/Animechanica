@@ -141,7 +141,7 @@ export function useDataGrid<T extends Record<string, any>>(props: DataGridInstan
     const defaultValues: Required<DataGridInstanceProps<T>["state"]> = {
         globalFilter: "",
         sorting: [],
-        pagination: { pageIndex: 0, pageSize: 5 },
+        pagination: { pageIndex: 0, pageSize: 10 },
         rowSelection: {},
         columnFilters: [],
         columnVisibility: {},
@@ -308,10 +308,12 @@ export function useDataGrid<T extends Record<string, any>>(props: DataGridInstan
     }, [table.getState().globalFilter, table.getState().columnFilters])
 
     React.useEffect(() => {
-        if (!enableManualPagination) {
+        // Only auto-update rowCount if manual pagination is disabled AND no explicit rowCount was provided
+        // When rowCount prop is provided, trust it instead of the internal table row count
+        if (!enableManualPagination && !_initialRowCount) {
             setRowCount(table.getRowModel().rows.length)
         }
-    }, [table.getRowModel().rows.length])
+    }, [table.getRowModel().rows.length, _initialRowCount])
 
     return {
         ...rest,
