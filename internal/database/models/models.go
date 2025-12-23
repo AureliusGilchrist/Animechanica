@@ -381,7 +381,8 @@ type Playlist struct {
 
 type MangaToReadItem struct {
 	BaseModel
-	MediaID int `gorm:"column:media_id;uniqueIndex" json:"mediaId"`
+	MediaID    int    `gorm:"column:media_id;uniqueIndex" json:"mediaId"`
+	LastReadAt *int64 `gorm:"column:last_read_at" json:"lastReadAt"` // Unix timestamp of when the manga was last read
 }
 
 // +------------------------+

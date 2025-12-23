@@ -73,10 +73,18 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
 
     const columns = React.useMemo(() => defineDataGridColumns<MangaDownloadChapterItem>(() => [
         {
-            accessorKey: "displayChapterNumber",
+            accessorKey: "chapterNumber",
             header: "Chapter",
             size: 90,
-            cell: info => <span>Chapter {info.getValue<string>()}</span>,
+            cell: ({ row }) => {
+                // Display the calculated sequential number (e.g., "Chapter 652")
+                // The actual source chapter is stored in displayChapterNumber
+                return (
+                    <span title={`Source: Chapter ${row.original.displayChapterNumber}`}>
+                        Chapter {row.original.chapterNumber}
+                    </span>
+                )
+            },
         },
         {
             id: "number",
@@ -84,7 +92,9 @@ export function DownloadedChapterList(props: DownloadedChapterListProps) {
             size: 10,
             enableSorting: true,
             accessorFn: (row) => {
-                return chapterIdsToNumber.get(row.chapterId)
+                // Use chapterNumber (calculated sequential) for sorting
+                const num = parseFloat(row.chapterNumber)
+                return isNaN(num) ? chapterIdsToNumber.get(row.chapterId) : num
             },
         },
         {

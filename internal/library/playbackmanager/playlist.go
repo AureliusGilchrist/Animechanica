@@ -79,7 +79,7 @@ func (h *playlistHub) reset() {
 	h.playingLf = nil
 	h.playingMediaListEntry = nil
 	h.currentState = nil
-	h.wsEventManager.SendEvent(events.PlaybackManagerPlaylistState, h.currentState)
+	h.playbackManager.sendEventToCurrentClient(events.PlaybackManagerPlaylistState, h.currentState)
 	return
 }
 
@@ -183,7 +183,7 @@ func (h *playlistHub) onPlaybackStatus(currListEntry *anilist.AnimeListEntry, cu
 		return
 	}
 
-	h.wsEventManager.SendEvent(events.PlaybackManagerPlaylistState, h.currentState)
+	h.playbackManager.sendEventToCurrentClient(events.PlaybackManagerPlaylistState, h.currentState)
 
 	return
 }

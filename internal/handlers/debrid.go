@@ -352,6 +352,8 @@ func (h *Handler) HandleDebridStartStream(c echo.Context) error {
 	sessionID := GetSessionID(c)
 	h.App.PlaybackManager.SetCurrentSessionID(sessionID)
 	h.App.DirectStreamManager.SetCurrentSessionID(sessionID)
+	// Set the client ID for targeted WebSocket events
+	h.App.PlaybackManager.SetCurrentClientID(b.ClientId)
 
 	userAgent := c.Request().Header.Get("User-Agent")
 

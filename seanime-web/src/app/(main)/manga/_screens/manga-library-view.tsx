@@ -122,6 +122,11 @@ export function CollectionLists({ collectionList, genres, storedProviders, showS
     const lists = collectionList?.lists?.filter(list => {
         if (!showStatuses) return true
         return list.type && showStatuses.includes(list.type)
+    })?.filter(list => {
+        // DEPRECATED: Hide "Currently Reading" (CURRENT) section
+        // The Reading List now serves as the primary reading tracker with recently-read ordering.
+        // To restore this section, remove this filter.
+        return list.type !== "CURRENT"
     })
 
     return (

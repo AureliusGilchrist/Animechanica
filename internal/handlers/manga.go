@@ -301,6 +301,11 @@ func (h *Handler) HandleGetMangaEntryPages(c echo.Context) error {
 		return h.RespondWithError(c, err)
 	}
 
+	// Update last_read_at for this manga in the reading list (if it exists)
+	go func() {
+		_ = h.App.Database.UpdateMangaToReadLastReadAt(b.MediaId)
+	}()
+
 	return h.RespondWithData(c, container)
 }
 

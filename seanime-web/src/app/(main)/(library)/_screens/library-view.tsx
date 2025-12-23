@@ -1,16 +1,18 @@
 import { AL_MediaListStatus, Anime_Episode, Anime_LibraryCollectionList } from "@/api/generated/types"
 import { LibraryCollectionFilteredLists, LibraryCollectionLists } from "@/app/(main)/(library)/_containers/library-collection"
-import { __mainLibrary_paramsAtom, __mainLibrary_paramsInputAtom } from "@/app/(main)/(library)/_lib/handle-library-collection"
+import { __mainLibrary_paramsAtom, __mainLibrary_paramsInputAtom, __mainLibrary_searchInputAtom } from "@/app/(main)/(library)/_lib/handle-library-collection"
 import { MediaGenreSelector } from "@/app/(main)/_features/media/_components/media-genre-selector"
 import { PageWrapper } from "@/components/shared/page-wrapper"
 import { cn } from "@/components/ui/core/styling"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TextInput } from "@/components/ui/text-input"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useThemeSettings } from "@/lib/theme/hooks"
 import { useSetAtom } from "jotai/index"
 import { useAtom } from "jotai/react"
 import { AnimatePresence } from "motion/react"
 import React from "react"
+import { FiSearch } from "react-icons/fi"
 
 
 type LibraryViewProps = {
@@ -43,6 +45,8 @@ export function LibraryView(props: LibraryViewProps) {
     const ts = useThemeSettings()
 
     const [params, setParams] = useAtom(__mainLibrary_paramsAtom)
+    const [searchInput, setSearchInput] = useAtom(__mainLibrary_searchInputAtom)
+    const debouncedSearchInput = useDebounce(searchInput, 300)
 
     if (isLoading) return <React.Fragment>
         <div className="p-4 space-y-4 relative z-[4]">
@@ -72,6 +76,15 @@ export function LibraryView(props: LibraryViewProps) {
 
     return (
         <>
+            <PageWrapper className="px-4 pb-4 relative z-[4]" data-library-search-container>
+                <TextInput
+                    leftIcon={<FiSearch />}
+                    placeholder="Search anime..."
+                    value={searchInput}
+                    onValueChange={setSearchInput}
+                    className="w-full sm:max-w-sm"
+                />
+            </PageWrapper>
 
             {(
                 !ts.disableLibraryScreenGenreSelector &&
@@ -88,6 +101,7 @@ export function LibraryView(props: LibraryViewProps) {
                             streamingMediaIds={streamingMediaIds}
                             showStatuses={showStatuses}
                             type={type}
+                            searchQuery={debouncedSearchInput}
                         />
                         : <LibraryCollectionFilteredLists
                             key="library-filtered-lists"
@@ -96,6 +110,7 @@ export function LibraryView(props: LibraryViewProps) {
                             streamingMediaIds={streamingMediaIds}
                             showStatuses={showStatuses}
                             type={type}
+                            searchQuery={debouncedSearchInput}
                         />
                     }
                 </AnimatePresence>

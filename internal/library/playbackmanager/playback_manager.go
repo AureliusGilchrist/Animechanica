@@ -105,6 +105,9 @@ type (
 		// Session-aware progress update
 		currentSessionID                 string                                                                     // The session ID of the user who initiated the current playback
 		updateProgressForSessionFunc     func(ctx context.Context, sessionID string, mediaID int, progress int, totalEpisodes *int) error // Session-aware progress update function
+
+		// Client-aware WebSocket events
+		currentClientID string // The WebSocket client ID that initiated the current playback (for targeted events)
 	}
 
 	// PlaybackStatusSubscriber provides a single event channel for all playback events
@@ -256,6 +259,33 @@ func (pm *PlaybackManager) GetCurrentSessionID() string {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	return pm.currentSessionID
+}
+
+// SetCurrentClientID sets the WebSocket client ID for the current playback.
+// This enables targeted WebSocket events to only go to the client that initiated playback.
+func (pm *PlaybackManager) SetCurrentClientID(clientID string) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.currentClientID = clientID
+}
+
+// GetCurrentClientID returns the WebSocket client ID for the current playback.
+func (pm *PlaybackManager) GetCurrentClientID() string {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	return pm.currentClientID
+}
+
+// sendEventToCurrentClient sends a WebSocket event to the current client only.
+// If no client ID is set, it falls back to broadcasting to all clients.
+func (pm *PlaybackManager) sendEventToCurrentClient(eventType string, payload interface{}) {
+	clientID := pm.GetCurrentClientID()
+	if clientID != "" {
+		pm.wsEventManager.SendEventTo(clientID, eventType, payload)
+	} else {
+		// Fallback to broadcast if no client ID is set
+		pm.wsEventManager.SendEvent(eventType, payload)
+	}
 }
 
 func (pm *PlaybackManager) SetAnimeCollection(ac *anilist.AnimeCollection) {

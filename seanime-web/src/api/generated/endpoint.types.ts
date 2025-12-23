@@ -1590,6 +1590,7 @@ export type RemoveOnlinestreamMapping_Variables = {
  */
 export type PlaybackPlayVideo_Variables = {
     path: string
+    clientId?: string
 }
 
 /**

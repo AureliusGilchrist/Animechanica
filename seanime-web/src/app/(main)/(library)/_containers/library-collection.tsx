@@ -7,18 +7,31 @@ import { IconButton } from "@/components/ui/button"
 import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/carousel"
 import { cn } from "@/components/ui/core/styling"
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { filterEntriesByTitle } from "@/lib/helpers/filtering"
 import { getLibraryCollectionTitle } from "@/lib/server/utils"
 import { useAtom } from "jotai/react"
 import React from "react"
 import { LuListFilter } from "react-icons/lu"
 
-export function LibraryCollectionLists({ collectionList, isLoading, streamingMediaIds, showStatuses, type }: {
+export function LibraryCollectionLists({ collectionList, isLoading, streamingMediaIds, showStatuses, type, searchQuery }: {
     collectionList: Anime_LibraryCollectionList[],
     isLoading: boolean,
     streamingMediaIds: number[],
     showStatuses?: AL_MediaListStatus[],
-    type: "carousel" | "grid"
+    type: "carousel" | "grid",
+    searchQuery?: string
 }) {
+
+    // Filter collection lists by search query
+    const filteredCollectionList = React.useMemo(() => {
+        if (!searchQuery?.trim()) return collectionList
+        return collectionList.map(collection => ({
+            ...collection,
+            entries: filterEntriesByTitle(collection.entries, searchQuery),
+        }))
+    }, [collectionList, searchQuery])
+
+    const hasResults = filteredCollectionList.some(c => c.entries?.length)
 
     return (
         <PageWrapper
@@ -33,7 +46,12 @@ export function LibraryCollectionLists({ collectionList, isLoading, streamingMed
                     duration: 0.25,
                 },
             }}>
-            {collectionList.map(collection => {
+            {!hasResults && searchQuery?.trim() && (
+                <div className="text-center py-8 text-[--muted]">
+                    No anime found matching "{searchQuery}"
+                </div>
+            )}
+            {filteredCollectionList.map(collection => {
                 if (!collection.entries?.length) return null
                 return <LibraryCollectionListItem
                     key={collection.type}
@@ -48,21 +66,32 @@ export function LibraryCollectionLists({ collectionList, isLoading, streamingMed
 
 }
 
-export function LibraryCollectionFilteredLists({ collectionList, isLoading, streamingMediaIds, showStatuses, type }: {
+export function LibraryCollectionFilteredLists({ collectionList, isLoading, streamingMediaIds, showStatuses, type, searchQuery }: {
     collectionList: Anime_LibraryCollectionList[],
     isLoading: boolean,
     streamingMediaIds: number[],
     showStatuses?: AL_MediaListStatus[],
-    type: "carousel" | "grid"
+    type: "carousel" | "grid",
+    searchQuery?: string
 }) {
 
     // const params = useAtomValue(__mainLibrary_paramsAtom)
 
     const filteredCollectionList = React.useMemo(() => {
-        return collectionList.filter(collection => {
+        let filtered = collectionList.filter(collection => {
             return !!showStatuses && !!collection.type && showStatuses.includes(collection.type)
         })
-    }, [collectionList, showStatuses])
+        // Apply search filter
+        if (searchQuery?.trim()) {
+            filtered = filtered.map(collection => ({
+                ...collection,
+                entries: filterEntriesByTitle(collection.entries, searchQuery),
+            }))
+        }
+        return filtered
+    }, [collectionList, showStatuses, searchQuery])
+
+    const hasResults = filteredCollectionList.some(c => c.entries?.length)
 
     return (
         <PageWrapper
@@ -77,6 +106,11 @@ export function LibraryCollectionFilteredLists({ collectionList, isLoading, stre
                     duration: 0.25,
                 },
             }}>
+            {!hasResults && searchQuery?.trim() && (
+                <div className="text-center py-8 text-[--muted]">
+                    No anime found matching "{searchQuery}"
+                </div>
+            )}
             {type === "grid" && <MediaCardLazyGrid itemCount={filteredCollectionList?.flatMap(n => n.entries)?.length ?? 0}>
                 {filteredCollectionList?.flatMap(n => n.entries)?.filter(Boolean)?.map(entry => {
                     return <LibraryCollectionEntryItem key={entry.mediaId} entry={entry} streamingMediaIds={streamingMediaIds} type={type} />

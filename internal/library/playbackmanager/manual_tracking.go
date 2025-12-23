@@ -119,7 +119,7 @@ func (pm *PlaybackManager) StartManualProgressTracking(opts *StartManualProgress
 			select {
 			case <-pm.manualTrackingCtx.Done():
 				pm.Logger.Debug().Msg("playback manager: Manual progress tracking canceled")
-				pm.wsEventManager.SendEvent(events.PlaybackManagerManualTrackingStopped, nil)
+				pm.sendEventToCurrentClient(events.PlaybackManagerManualTrackingStopped, nil)
 				return
 			default:
 				ps := playbackStatePool.Get().(*PlaybackState)
@@ -131,7 +131,7 @@ func (pm *PlaybackManager) StartManualProgressTracking(opts *StartManualProgress
 				ps.CanPlayNext = false
 				ps.ProgressUpdated = false
 				ps.MediaId = opts.MediaId
-				pm.wsEventManager.SendEvent(events.PlaybackManagerManualTrackingPlaybackState, ps)
+				pm.sendEventToCurrentClient(events.PlaybackManagerManualTrackingPlaybackState, ps)
 				playbackStatePool.Put(ps)
 				// Continuously send the progress to the client
 				time.Sleep(3 * time.Second)

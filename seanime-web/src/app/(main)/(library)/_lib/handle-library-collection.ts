@@ -24,6 +24,8 @@ export const __mainLibrary_paramsAtom = atomWithImmer<CollectionParams<"anime">>
 
 export const __mainLibrary_paramsInputAtom = atomWithImmer<CollectionParams<"anime">>(MAIN_LIBRARY_DEFAULT_PARAMS)
 
+export const __mainLibrary_searchInputAtom = atomWithImmer<string>("")
+
 export function useHandleLibraryCollection() {
     const serverStatus = useServerStatus()
 

@@ -15,7 +15,8 @@ import (
 //	@returns bool
 func (h *Handler) HandlePlaybackPlayVideo(c echo.Context) error {
 	type body struct {
-		Path string `json:"path"`
+		Path     string `json:"path"`
+		ClientId string `json:"clientId"`
 	}
 	b := new(body)
 	if err := c.Bind(b); err != nil {
@@ -25,11 +26,13 @@ func (h *Handler) HandlePlaybackPlayVideo(c echo.Context) error {
 	// Set the session ID for the current playback so progress updates go to the correct user
 	sessionID := GetSessionID(c)
 	h.App.PlaybackManager.SetCurrentSessionID(sessionID)
+	// Set the client ID for targeted WebSocket events
+	h.App.PlaybackManager.SetCurrentClientID(b.ClientId)
 
 	err := h.App.PlaybackManager.StartPlayingUsingMediaPlayer(&playbackmanager.StartPlayingOptions{
 		Payload:   b.Path,
 		UserAgent: c.Request().Header.Get("User-Agent"),
-		ClientId:  "",
+		ClientId:  b.ClientId,
 	})
 	if err != nil {
 		return h.RespondWithError(c, err)
@@ -47,13 +50,21 @@ func (h *Handler) HandlePlaybackPlayVideo(c echo.Context) error {
 //	@route /api/v1/playback-manager/play-random [POST]
 //	@returns bool
 func (h *Handler) HandlePlaybackPlayRandomVideo(c echo.Context) error {
+	type body struct {
+		ClientId string `json:"clientId"`
+	}
+	b := new(body)
+	_ = c.Bind(b) // Optional binding, ignore errors
+
 	// Set the session ID for the current playback so progress updates go to the correct user
 	sessionID := GetSessionID(c)
 	h.App.PlaybackManager.SetCurrentSessionID(sessionID)
+	// Set the client ID for targeted WebSocket events
+	h.App.PlaybackManager.SetCurrentClientID(b.ClientId)
 
 	err := h.App.PlaybackManager.StartRandomVideo(&playbackmanager.StartRandomVideoOptions{
 		UserAgent: c.Request().Header.Get("User-Agent"),
-		ClientId:  "",
+		ClientId:  b.ClientId,
 	})
 	if err != nil {
 		return h.RespondWithError(c, err)
@@ -215,6 +226,8 @@ func (h *Handler) HandlePlaybackStartManualTracking(c echo.Context) error {
 	// Set the session ID for the current playback so progress updates go to the correct user
 	sessionID := GetSessionID(c)
 	h.App.PlaybackManager.SetCurrentSessionID(sessionID)
+	// Set the client ID for targeted WebSocket events
+	h.App.PlaybackManager.SetCurrentClientID(b.ClientId)
 
 	err := h.App.PlaybackManager.StartManualProgressTracking(&playbackmanager.StartManualProgressTrackingOptions{
 		ClientId:      b.ClientId,

@@ -3169,6 +3169,10 @@ export type Manga_ProviderDownloadMapChapterInfo = {
      * Original chapter number for UI display
      */
     displayChapterNumber: string
+    /**
+     * Index from the source for ordering/display
+     */
+    chapterIndex: number
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

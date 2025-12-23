@@ -54,6 +54,7 @@ type (
 		ChapterID            string `json:"chapterId"`
 		ChapterNumber        string `json:"chapterNumber"`        // Used for folder naming (calculated)
 		DisplayChapterNumber string `json:"displayChapterNumber"` // Original chapter number for UI display
+		ChapterIndex         uint   `json:"chapterIndex"`         // Index from the source for ordering/display
 	}
 
 	MediaDownloadData struct {
@@ -402,20 +403,16 @@ func (mm *MediaMap) getMediaDownload(mediaId int, db *db.Database) (MediaDownloa
 
 	qm := make(ProviderDownloadMap)
 	for _, item := range queued {
+		info := ProviderDownloadMapChapterInfo{
+			ChapterID:            item.ChapterID,
+			ChapterNumber:        item.ChapterNumber,
+			DisplayChapterNumber: item.DisplayChapterNumber,
+			ChapterIndex:         item.ChapterIndex,
+		}
 		if _, ok := qm[item.Provider]; !ok {
-			qm[item.Provider] = []ProviderDownloadMapChapterInfo{
-				{
-					ChapterID:            item.ChapterID,
-					ChapterNumber:        item.ChapterNumber,
-					DisplayChapterNumber: item.DisplayChapterNumber,
-				},
-			}
+			qm[item.Provider] = []ProviderDownloadMapChapterInfo{info}
 		} else {
-			qm[item.Provider] = append(qm[item.Provider], ProviderDownloadMapChapterInfo{
-				ChapterID:            item.ChapterID,
-				ChapterNumber:        item.ChapterNumber,
-				DisplayChapterNumber: item.DisplayChapterNumber,
-			})
+			qm[item.Provider] = append(qm[item.Provider], info)
 		}
 	}
 
@@ -467,13 +464,17 @@ func (d *Downloader) hydrateMediaMap() {
 					return
 				}
 
-				// Try to read metadata for display chapter number
+				// Try to read metadata for display chapter number and index
 				chapterDir := filepath.Join(d.downloadDir, file.Name())
 				metadata := chapter_downloader.ReadChapterMetadata(chapterDir)
 
 				displayChapterNumber := id.ChapterNumber // Default to folder chapter number
-				if metadata != nil && metadata.DisplayChapterNumber != "" {
-					displayChapterNumber = metadata.DisplayChapterNumber
+				var chapterIndex uint = 0
+				if metadata != nil {
+					if metadata.DisplayChapterNumber != "" {
+						displayChapterNumber = metadata.DisplayChapterNumber
+					}
+					chapterIndex = metadata.ChapterIndex
 				}
 
 				mu.Lock()
@@ -481,6 +482,7 @@ func (d *Downloader) hydrateMediaMap() {
 					ChapterID:            id.ChapterId,
 					ChapterNumber:        id.ChapterNumber,
 					DisplayChapterNumber: displayChapterNumber,
+					ChapterIndex:         chapterIndex,
 				}
 
 				if _, ok := ret[id.MediaId]; !ok {

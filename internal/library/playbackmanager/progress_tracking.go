@@ -74,8 +74,8 @@ func (pm *PlaybackManager) handleTrackingStarted(status *mediaplayer.PlaybackSta
 	_ps := pm.getLocalFilePlaybackState(status)
 	// Log
 	pm.Logger.Debug().Msg("playback manager: Tracking started, extracting metadata...")
-	// Send event to the client
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressTrackingStarted, _ps)
+	// Send event to the client that initiated playback
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressTrackingStarted, _ps)
 
 	// Notify subscribers
 	go func() {
@@ -94,8 +94,8 @@ func (pm *PlaybackManager) handleTrackingStarted(status *mediaplayer.PlaybackSta
 	currentMediaListEntry, currentLocalFile, currentLocalFileWrapperEntry, err := pm.getLocalFilePlaybackDetails(status.Filepath)
 	if err != nil {
 		pm.Logger.Error().Err(err).Msg("playback manager: Failed to get media data")
-		// Send error event to the client
-		pm.wsEventManager.SendEvent(events.ErrorToast, err.Error())
+		// Send error event to the client that initiated playback
+		pm.sendEventToCurrentClient(events.ErrorToast, err.Error())
 		//
 		pm.MediaPlayerRepository.Cancel()
 		return
@@ -169,7 +169,7 @@ func (pm *PlaybackManager) handleVideoCompleted(status *mediaplayer.PlaybackStat
 
 	// Send the playback state with the `ProgressUpdated` flag
 	// The client will use this to notify the user if the progress has been updated
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressVideoCompleted, _ps)
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressVideoCompleted, _ps)
 	// Push the video playback state to the history
 	pm.historyMap[status.Filename] = _ps
 
@@ -180,7 +180,7 @@ func (pm *PlaybackManager) handleTrackingStopped(reason string) {
 	defer pm.eventMu.Unlock()
 
 	pm.Logger.Debug().Msg("playback manager: Received tracking stopped event")
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressTrackingStopped, reason)
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressTrackingStopped, reason)
 
 	// Find the next episode and set it to [PlaybackManager.nextEpisodeLocalFile]
 	if pm.currentMediaListEntry.IsPresent() && pm.currentLocalFile.IsPresent() && pm.currentLocalFileWrapperEntry.IsPresent() {
@@ -240,8 +240,8 @@ func (pm *PlaybackManager) handlePlaybackStatus(status *mediaplayer.PlaybackStat
 		})
 	}()
 
-	// Send the playback state to the client
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressPlaybackState, _ps)
+	// Send the playback state to the client that initiated playback
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressPlaybackState, _ps)
 
 	// ------- Discord ------- //
 	if pm.discordPresence != nil && !pm.isOfflineRef.Get() {
@@ -302,8 +302,8 @@ func (pm *PlaybackManager) handleStreamingTrackingStarted(status *mediaplayer.Pl
 
 	// Log
 	pm.Logger.Debug().Msg("playback manager: Tracking started for stream")
-	// Send event to the client
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressTrackingStarted, _ps)
+	// Send event to the client that initiated playback
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressTrackingStarted, _ps)
 
 	pm.continuityManager.SetExternalPlayerEpisodeDetails(&continuity.ExternalPlayerEpisodeDetails{
 		EpisodeNumber: pm.currentStreamEpisode.MustGet().GetProgressNumber(),
@@ -358,8 +358,8 @@ func (pm *PlaybackManager) handleStreamingPlaybackStatus(status *mediaplayer.Pla
 		})
 	}()
 
-	// Send the playback state to the client
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressPlaybackState, _ps)
+	// Send the playback state to the client that initiated playback
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressPlaybackState, _ps)
 
 	// ------- Discord ------- //
 	if pm.discordPresence != nil && !pm.isOfflineRef.Get() {
@@ -400,7 +400,7 @@ func (pm *PlaybackManager) handleStreamingVideoCompleted(status *mediaplayer.Pla
 
 	// Send the playback state with the `ProgressUpdated` flag
 	// The client will use this to notify the user if the progress has been updated
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressVideoCompleted, _ps)
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressVideoCompleted, _ps)
 	// Push the video playback state to the history
 	pm.historyMap[status.Filename] = _ps
 }
@@ -429,7 +429,7 @@ func (pm *PlaybackManager) handleStreamingTrackingStopped(reason string) {
 	}()
 
 	pm.Logger.Debug().Msg("playback manager: Received tracking stopped event")
-	pm.wsEventManager.SendEvent(events.PlaybackManagerProgressTrackingStopped, reason)
+	pm.sendEventToCurrentClient(events.PlaybackManagerProgressTrackingStopped, reason)
 
 	// ------- Discord ------- //
 	if pm.discordPresence != nil && !pm.isOfflineRef.Get() {
@@ -560,10 +560,10 @@ func (pm *PlaybackManager) autoSyncCurrentProgress(_ps *PlaybackState) {
 
 	if err != nil {
 		_ps.ProgressUpdated = false
-		pm.wsEventManager.SendEvent(events.ErrorToast, "Failed to update progress on AniList")
+		pm.sendEventToCurrentClient(events.ErrorToast, "Failed to update progress on AniList")
 	} else {
 		_ps.ProgressUpdated = true
-		pm.wsEventManager.SendEvent(events.PlaybackManagerProgressUpdated, _ps)
+		pm.sendEventToCurrentClient(events.PlaybackManagerProgressUpdated, _ps)
 	}
 
 }
@@ -592,7 +592,7 @@ func (pm *PlaybackManager) SyncCurrentProgress() error {
 		}
 		_ps.ProgressUpdated = true
 		pm.historyMap[pm.currentMediaPlaybackStatus.Filename] = _ps
-		pm.wsEventManager.SendEvent(events.PlaybackManagerProgressUpdated, _ps)
+		pm.sendEventToCurrentClient(events.PlaybackManagerProgressUpdated, _ps)
 	}
 
 	pm.refreshAnimeCollectionFunc()

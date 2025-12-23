@@ -7,9 +7,10 @@ import { MangaManualMappingModal } from "@/app/(main)/manga/_containers/chapter-
 import { ChapterReaderDrawer } from "@/app/(main)/manga/_containers/chapter-reader/chapter-reader-drawer"
 import { __manga_selectedChapterAtom } from "@/app/(main)/manga/_lib/handle-chapter-reader"
 import { useHandleMangaChapters } from "@/app/(main)/manga/_lib/handle-manga-chapters"
-import { useHandleDownloadMangaChapter } from "@/app/(main)/manga/_lib/handle-manga-downloads"
-import { getChapterNumberFromChapter, useMangaChapterListRowSelection, useMangaDownloadDataUtils } from "@/app/(main)/manga/_lib/handle-manga-utils"
+import { useHandleDownloadMangaChapter, useMangaEntryDownloadedChapters } from "@/app/(main)/manga/_lib/handle-manga-downloads"
+import { getChapterNumberFromChapter, getDecimalFromChapter, useMangaChapterListRowSelection, useMangaDownloadDataUtils } from "@/app/(main)/manga/_lib/handle-manga-utils"
 import { LANGUAGES_LIST } from "@/app/(main)/manga/_lib/language-map"
+import { cn } from "@/components/ui/core/styling"
 import { monochromeCheckboxClasses } from "@/components/shared/classnames"
 import { ConfirmationDialog, useConfirmationDialog } from "@/components/shared/confirmation-dialog"
 import { LuffyError } from "@/components/shared/luffy-error"
@@ -69,7 +70,7 @@ export function ChapterList(props: ChapterListProps) {
     } = useHandleMangaChapters(mediaId)
 
 
-    // Keep track of chapter numbers as integers
+    // Keep track of chapter numbers as integers (from source's chapter string)
     // This is used to filter the chapters
     // [id]: number
     const chapterIdToNumbersMap = React.useMemo(() => {
@@ -82,6 +83,43 @@ export function ChapterList(props: ChapterListProps) {
         return map
     }, [chapterContainer?.chapters])
 
+    // Calculate sequential chapter numbers based on position in the full list
+    // This gives us the correct "Chapter 652" style numbering
+    // Chapters are typically in reverse order (newest first), so we iterate from the end
+    // For decimal chapters (e.g., 50.5), use the integer part
+    // For non-decimal chapters, count sequentially from 1
+    const chapterIdToSequentialNumberMap = React.useMemo(() => {
+        const map = new Map<string, number>()
+        const chapters = chapterContainer?.chapters ?? []
+        
+        // Count total non-decimal chapters first
+        let nonDecimalCount = 0
+        for (const chapter of chapters) {
+            if (!chapter.chapter.includes(".")) {
+                nonDecimalCount++
+            }
+        }
+        
+        // Iterate from end to start (oldest to newest) to assign sequential numbers
+        let currentSeqNum = 1
+        for (let i = chapters.length - 1; i >= 0; i--) {
+            const chapter = chapters[i]
+            const chapterStr = chapter.chapter
+            
+            if (chapterStr.includes(".")) {
+                // Decimal chapter - use the integer part
+                const intPart = Math.floor(getDecimalFromChapter(chapterStr))
+                map.set(chapter.id, intPart)
+            } else {
+                // Non-decimal chapter - assign sequential number
+                map.set(chapter.id, currentSeqNum)
+                currentSeqNum++
+            }
+        }
+
+        return map
+    }, [chapterContainer?.chapters])
+
     const [showUnreadChapter, setShowUnreadChapter] = React.useState(false)
     const [showDownloadedChapters, setShowDownloadedChapters] = React.useState(false)
 
@@ -89,6 +127,10 @@ export function ChapterList(props: ChapterListProps) {
      * Set selected chapter
      */
     const setSelectedChapter = useSetAtom(__manga_selectedChapterAtom)
+    /**
+     * Downloaded chapter container (for reading offline chapters)
+     */
+    const [downloadedChapterContainer, setDownloadedChapterContainer] = useAtom(manga_downloadedChapterContainerAtom)
     /**
      * Clear manga cache
      */
@@ -106,17 +148,57 @@ export function ChapterList(props: ChapterListProps) {
         isChapterLocal,
     } = useMangaDownloadDataUtils(downloadData, downloadDataLoading)
 
+    /**
+     * Get all downloaded chapters for this entry
+     */
+    const downloadedChapters = useMangaEntryDownloadedChapters()
+
+    /**
+     * Check if a chapter has a downloaded version from the same provider
+     */
+    const getDownloadedChapterForSameProvider = React.useCallback((chapter: HibikeManga_ChapterDetails) => {
+        if (!selectedProvider) return undefined
+        // Find a downloaded chapter with the same provider and matching chapter number (using displayChapterNumber)
+        return downloadedChapters.find(dc => 
+            dc.provider === selectedProvider && 
+            getDecimalFromChapter(dc.displayChapterNumber) === getDecimalFromChapter(chapter.chapter)
+        )
+    }, [downloadedChapters, selectedProvider])
+
+    /**
+     * Check if a chapter is downloaded from the current provider
+     */
+    const isChapterDownloadedFromSameProvider = React.useCallback((chapter: HibikeManga_ChapterDetails) => {
+        return !!getDownloadedChapterForSameProvider(chapter)
+    }, [getDownloadedChapterForSameProvider])
+
     const { inject, remove } = useSeaCommandInject()
+
+    /**
+     * Function to check if a chapter is read (based on user's progress)
+     * Uses the sequential chapter number (calculated from position in full list) for comparison
+     */
+    const isChapterRead = React.useCallback((chapter: HibikeManga_ChapterDetails) => {
+        if (!entry.listData || !entry.listData?.progress) return false
+
+        // Use the sequential number calculated from position in the full chapter list
+        const sequentialNum = chapterIdToSequentialNumberMap.get(chapter.id)
+        if (sequentialNum !== undefined) {
+            return sequentialNum <= entry.listData.progress
+        }
+
+        // Fall back to the source's chapter number if not in sequential map
+        if (!chapterIdToNumbersMap.has(chapter.id)) return false
+        const chapterNumber = chapterIdToNumbersMap.get(chapter.id)
+        return !!chapterNumber && chapterNumber <= entry.listData?.progress
+    }, [chapterIdToNumbersMap, chapterIdToSequentialNumberMap, entry])
 
     /**
      * Function to filter unread chapters
      */
     const retainUnreadChapters = React.useCallback((chapter: HibikeManga_ChapterDetails) => {
-        if (!entry.listData || !chapterIdToNumbersMap.has(chapter.id) || !entry.listData?.progress) return true
-
-        const chapterNumber = chapterIdToNumbersMap.get(chapter.id)
-        return !!chapterNumber && chapterNumber > entry.listData?.progress
-    }, [chapterIdToNumbersMap, chapterContainer, entry])
+        return !isChapterRead(chapter)
+    }, [isChapterRead])
 
     const confirmReloadSource = useConfirmationDialog({
         title: "Reload sources",
@@ -131,6 +213,35 @@ export function ChapterList(props: ChapterListProps) {
     })
 
     /**
+     * Handle clicking read - use downloaded version if available from same provider
+     */
+    const handleReadChapter = React.useCallback((chapter: HibikeManga_ChapterDetails) => {
+        const downloadedVersion = getDownloadedChapterForSameProvider(chapter)
+        if (downloadedVersion) {
+            // Use the downloaded version
+            setDownloadedChapterContainer({
+                mediaId: Number(mediaId),
+                provider: downloadedVersion.provider,
+                chapters: [],
+            })
+            setSelectedChapter({
+                chapterId: downloadedVersion.chapterId,
+                chapterNumber: downloadedVersion.chapterNumber,
+                provider: downloadedVersion.provider,
+                mediaId: Number(mediaId),
+            })
+        } else {
+            // Use the online version
+            setSelectedChapter({
+                chapterId: chapter.id,
+                chapterNumber: chapter.chapter,
+                provider: chapter.provider,
+                mediaId: Number(mediaId),
+            })
+        }
+    }, [getDownloadedChapterForSameProvider, setDownloadedChapterContainer, setSelectedChapter, mediaId])
+
+    /**
      * Chapter columns
      */
     const columns = React.useMemo(() => defineDataGridColumns<HibikeManga_ChapterDetails>(() => [
@@ -138,6 +249,32 @@ export function ChapterList(props: ChapterListProps) {
             accessorKey: "title",
             header: "Name",
             size: 90,
+            cell: ({ row }) => {
+                const downloadedVersion = getDownloadedChapterForSameProvider(row.original)
+                const isRead = isChapterRead(row.original)
+                // Use the sequential number calculated from position in the full chapter list
+                const sequentialNum = chapterIdToSequentialNumberMap.get(row.original.id)
+                // If downloaded from same provider, show "Chapter {sequentialNum}" 
+                const displayTitle = downloadedVersion && sequentialNum !== undefined
+                    ? `Chapter ${sequentialNum}`
+                    : row.original.title
+                return (
+                    <div className={cn(
+                        "flex items-center gap-2",
+                        isRead && "opacity-50"
+                    )}>
+                        {downloadedVersion && (
+                            <MdOutlineOfflinePin 
+                                className="text-[--green] text-lg flex-shrink-0" 
+                                title={`Downloaded (Source: ${row.original.title})`} 
+                            />
+                        )}
+                        <span title={downloadedVersion ? `Source: ${row.original.title}` : undefined}>
+                            {displayTitle}
+                        </span>
+                    </div>
+                )
+            },
         },
         ...(selectedExtension?.settings?.supportsMultiScanlator ? [{
             id: "scanlator",
@@ -168,8 +305,13 @@ export function ChapterList(props: ChapterListProps) {
             enableSorting: false,
             enableGlobalFilter: false,
             cell: ({ row }) => {
+                const isDownloadedSameProvider = isChapterDownloadedFromSameProvider(row.original)
+                const isRead = isChapterRead(row.original)
                 return (
-                    <div className="flex justify-end gap-2 items-center w-full">
+                    <div className={cn(
+                        "flex justify-end gap-2 items-center w-full",
+                        isRead && "opacity-50"
+                    )}>
                         {(!isChapterLocal(row.original) && !isChapterDownloaded(row.original) && !isChapterQueued(row.original)) && <IconButton
                             intent="gray-basic"
                             size="sm"
@@ -178,23 +320,18 @@ export function ChapterList(props: ChapterListProps) {
                             icon={<MdOutlineDownloadForOffline className="text-2xl" />}
                         />}
                         {isChapterQueued(row.original) && <p className="text-[--muted]">Queued</p>}
-                        {isChapterDownloaded(row.original) && <p className="text-[--muted] px-1"><MdOutlineOfflinePin className="text-2xl" /></p>}
                         <IconButton
                             intent="gray-subtle"
                             size="sm"
-                            onClick={() => setSelectedChapter({
-                                chapterId: row.original.id,
-                                chapterNumber: row.original.chapter,
-                                provider: row.original.provider,
-                                mediaId: Number(mediaId),
-                            })}
+                            onClick={() => handleReadChapter(row.original)}
                             icon={<GiOpenBook />}
+                            title={isDownloadedSameProvider ? "Read offline" : "Read online"}
                         />
                     </div>
                 )
             },
         },
-    ]), [chapterIdToNumbersMap, selectedExtension, isSendingDownloadRequest, isChapterDownloaded, downloadData, mediaId])
+    ]), [chapterIdToNumbersMap, chapterIdToSequentialNumberMap, selectedExtension, isSendingDownloadRequest, isChapterDownloaded, getDownloadedChapterForSameProvider, isChapterRead, downloadData, mediaId, handleReadChapter])
 
     const unreadChapters = React.useMemo(() => chapterContainer?.chapters?.filter(ch => retainUnreadChapters(ch)) ?? [], [chapterContainer, entry])
     const allChapters = React.useMemo(() => chapterContainer?.chapters?.toReversed() ?? [], [chapterContainer])
@@ -246,49 +383,51 @@ export function ChapterList(props: ChapterListProps) {
                 value: `${nextChapter.chapter}`,
                 heading: "Next Chapter",
                 priority: 2,
-                render: () => (
-                    <div className="flex gap-1 items-center w-full">
-                        <p className="max-w-[70%] truncate">Chapter {nextChapter.chapter}</p>
-                        {nextChapter.scanlator && (
-                            <p className="text-[--muted]">({nextChapter.scanlator})</p>
-                        )}
-                    </div>
-                ),
+                render: () => {
+                    const isDownloaded = isChapterDownloadedFromSameProvider(nextChapter)
+                    return (
+                        <div className="flex gap-1 items-center w-full">
+                            {isDownloaded && <MdOutlineOfflinePin className="text-[--green]" />}
+                            <p className="max-w-[70%] truncate">
+                                Chapter {nextChapter.chapter}
+                            </p>
+                            {nextChapter.scanlator && (
+                                <p className="text-[--muted]">({nextChapter.scanlator})</p>
+                            )}
+                        </div>
+                    )
+                },
                 onSelect: ({ ctx }) => {
-                    setSelectedChapter({
-                        chapterId: nextChapter.id,
-                        chapterNumber: nextChapter.chapter,
-                        provider: nextChapter.provider,
-                        mediaId: Number(mediaId),
-                    })
+                    handleReadChapter(nextChapter)
                     ctx.close()
                 },
             } as SeaCommandInjectableItem] : []),
             // Upcoming chapters
-            ...upcomingChapters.map(chapter => ({
-                data: chapter,
-                id: `chapter-${chapter.id}`,
-                value: `${chapter.chapter}`,
-                heading: "Upcoming Chapters",
-                priority: 1,
-                render: () => (
-                    <div className="flex gap-1 items-center w-full">
-                        <p className="max-w-[70%] truncate">Chapter {chapter.chapter}</p>
-                        {chapter.scanlator && (
-                            <p className="text-[--muted]">({chapter.scanlator})</p>
-                        )}
-                    </div>
-                ),
-                onSelect: ({ ctx }) => {
-                    setSelectedChapter({
-                        chapterId: chapter.id,
-                        chapterNumber: chapter.chapter,
-                        provider: chapter.provider,
-                        mediaId: Number(mediaId),
-                    })
-                    ctx.close()
-                },
-            } as SeaCommandInjectableItem)),
+            ...upcomingChapters.map(chapter => {
+                const isDownloaded = isChapterDownloadedFromSameProvider(chapter)
+                return {
+                    data: chapter,
+                    id: `chapter-${chapter.id}`,
+                    value: `${chapter.chapter}`,
+                    heading: "Upcoming Chapters",
+                    priority: 1,
+                    render: () => (
+                        <div className="flex gap-1 items-center w-full">
+                            {isDownloaded && <MdOutlineOfflinePin className="text-[--green]" />}
+                            <p className="max-w-[70%] truncate">
+                                Chapter {chapter.chapter}
+                            </p>
+                            {chapter.scanlator && (
+                                <p className="text-[--muted]">({chapter.scanlator})</p>
+                            )}
+                        </div>
+                    ),
+                    onSelect: ({ ctx }) => {
+                        handleReadChapter(chapter)
+                        ctx.close()
+                    },
+                } as SeaCommandInjectableItem
+            }),
         ]
 
         inject("manga-chapters", {
@@ -302,9 +441,7 @@ export function ChapterList(props: ChapterListProps) {
         })
 
         return () => remove("manga-chapters")
-    }, [chapterContainer?.chapters, unreadChapters, mediaId])
-
-    const [downloadedChapterContainer] = useAtom(manga_downloadedChapterContainerAtom)
+    }, [chapterContainer?.chapters, unreadChapters, mediaId, isChapterDownloadedFromSameProvider, handleReadChapter])
 
     if (providerExtensionsLoading) return <LoadingSpinner />
 
@@ -416,14 +553,7 @@ export function ChapterList(props: ChapterListProps) {
                                             intent="white"
                                             rounded
                                             leftIcon={<IoBookOutline />}
-                                            onClick={() => {
-                                                setSelectedChapter({
-                                                    chapterId: unreadChapters[0].id,
-                                                    chapterNumber: unreadChapters[0].chapter,
-                                                    provider: unreadChapters[0].provider,
-                                                    mediaId: Number(mediaId),
-                                                })
-                                            }}
+                                            onClick={() => handleReadChapter(unreadChapters[0])}
                                         >
                                             Continue reading
                                         </Button>}
@@ -502,10 +632,15 @@ export function ChapterList(props: ChapterListProps) {
                 chapterIdToNumbersMap={chapterIdToNumbersMap}
             />}
 
-            <DownloadedChapterList
+            {/* DEPRECATED: Separate Downloaded Chapters list - now integrated into main chapter list
+             * Downloaded chapters are now shown inline with green offline pin icon and sequential numbering.
+             * To restore this feature, uncomment the DownloadedChapterList component below.
+             * See memory for details on restoring this feature.
+             */}
+            {/* <DownloadedChapterList
                 entry={entry}
                 data={downloadData}
-            />
+            /> */}
 
             <ConfirmationDialog {...confirmReloadSource} />
         </div>
