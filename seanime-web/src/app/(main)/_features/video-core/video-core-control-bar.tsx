@@ -38,8 +38,11 @@ import {
     vc_autoPlayVideoAtom,
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
+    vc_bingeModeAtom,
     vc_highlightOPEDChaptersAtom,
     vc_showChapterMarkersAtom,
+    vc_skipFillerAtom,
+    vc_skipIntroAtom,
     vc_storedMutedAtom,
     vc_storedPlaybackRateAtom,
     vc_storedVolumeAtom,
@@ -70,10 +73,10 @@ import {
     LuVolume2,
     LuVolumeOff,
 } from "react-icons/lu"
-import { MdSpeed } from "react-icons/md"
+import { MdOutlineFilterListOff, MdSkipNext, MdSpeed } from "react-icons/md"
 import { RiPauseLargeLine, RiPlayLargeLine } from "react-icons/ri"
 import { RxEnterFullScreen, RxExitFullScreen } from "react-icons/rx"
-import { TbArrowForwardUp, TbPictureInPicture, TbPictureInPictureOff } from "react-icons/tb"
+import { TbArrowForwardUp, TbPictureInPicture, TbPictureInPictureOff, TbPlayerTrackNext } from "react-icons/tb"
 import { toast } from "sonner"
 
 const VIDEOCORE_CONTROL_BAR_VPADDING = 5
@@ -681,6 +684,9 @@ export function VideoCoreSettingsButton() {
     const [autoNext, setAutoNext] = useAtom(vc_autoNextAtom)
     const [autoPlay, setAutoPlay] = useAtom(vc_autoPlayVideoAtom)
     const [autoSkipOPED, setAutoSkipOPED] = useAtom(vc_autoSkipOPEDAtom)
+    const [bingeMode, setBingeMode] = useAtom(vc_bingeModeAtom)
+    const [skipIntro, setSkipIntro] = useAtom(vc_skipIntroAtom)
+    const [skipFiller, setSkipFiller] = useAtom(vc_skipFillerAtom)
 
     const [menuOpen, setMenuOpen] = useAtom(vc_menuOpen)
     const [openMenuSection, setOpenMenuSection] = useAtom(vc_menuSectionOpen)
@@ -718,6 +724,9 @@ export function VideoCoreSettingsButton() {
                     <VideoCoreMenuOption title="Auto Play" icon={IoCaretForwardCircleOutline} value={autoPlay ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Auto Next" icon={HiFastForward} value={autoNext ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Skip OP/ED" icon={TbArrowForwardUp} value={autoSkipOPED ? "On" : "Off"} />
+                    <VideoCoreMenuOption title="Binge Mode" icon={TbPlayerTrackNext} value={bingeMode ? "On" : "Off"} />
+                    <VideoCoreMenuOption title="Skip Intro" icon={MdSkipNext} value={skipIntro ? "On" : "Off"} />
+                    <VideoCoreMenuOption title="Skip Filler" icon={MdOutlineFilterListOff} value={skipFiller ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Anime4K" icon={LuSparkles} value={currentAnime4kOption?.label || "Off"} />
                     <VideoCoreMenuOption title="Appearance" icon={LuPaintbrush} />
                     <VideoCoreMenuOption title="Preferences" icon={LuSettings2} onClick={() => setKeybindingsModelOpen(true)} />
@@ -773,6 +782,51 @@ export function VideoCoreSettingsButton() {
                                 setAutoSkipOPED(!!v)
                             }}
                             value={autoSkipOPED ? 1 : 0}
+                        />
+                    </VideoCoreMenuOption>
+                    <VideoCoreMenuOption title="Binge Mode" icon={TbPlayerTrackNext}>
+                        <p className="text-[--muted] text-sm mb-2">
+                            Skips endings and auto-plays next episode while maintaining fullscreen.
+                        </p>
+                        <VideoCoreSettingSelect
+                            options={[
+                                { label: "On", value: 1 },
+                                { label: "Off", value: 0 },
+                            ]}
+                            onValueChange={(v: number) => {
+                                setBingeMode(!!v)
+                            }}
+                            value={bingeMode ? 1 : 0}
+                        />
+                    </VideoCoreMenuOption>
+                    <VideoCoreMenuOption title="Skip Intro" icon={MdSkipNext}>
+                        <p className="text-[--muted] text-sm mb-2">
+                            Automatically skips anime intros/openings.
+                        </p>
+                        <VideoCoreSettingSelect
+                            options={[
+                                { label: "On", value: 1 },
+                                { label: "Off", value: 0 },
+                            ]}
+                            onValueChange={(v: number) => {
+                                setSkipIntro(!!v)
+                            }}
+                            value={skipIntro ? 1 : 0}
+                        />
+                    </VideoCoreMenuOption>
+                    <VideoCoreMenuOption title="Skip Filler" icon={MdOutlineFilterListOff}>
+                        <p className="text-[--muted] text-sm mb-2">
+                            Automatically skips filler episodes based on the filler list.
+                        </p>
+                        <VideoCoreSettingSelect
+                            options={[
+                                { label: "On", value: 1 },
+                                { label: "Off", value: 0 },
+                            ]}
+                            onValueChange={(v: number) => {
+                                setSkipFiller(!!v)
+                            }}
+                            value={skipFiller ? 1 : 0}
                         />
                     </VideoCoreMenuOption>
                     <VideoCoreMenuOption title="Anime4K" icon={LuSparkles}>

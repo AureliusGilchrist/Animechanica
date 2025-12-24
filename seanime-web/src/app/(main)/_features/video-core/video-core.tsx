@@ -39,6 +39,7 @@ import {
     vc_autoPlayVideoAtom,
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
+    vc_bingeModeAtom,
     vc_settings,
     vc_storedMutedAtom,
     vc_storedPlaybackRateAtom,
@@ -298,6 +299,7 @@ export function VideoCore(props: VideoCoreProps) {
     const [autoNext] = useAtom(vc_autoNextAtom)
     const [autoPlay] = useAtom(vc_autoPlayVideoAtom)
     const [autoSkipOpeningOutro] = useAtom(vc_autoSkipOPEDAtom)
+    const [bingeMode] = useAtom(vc_bingeModeAtom)
     const [volume] = useAtom(vc_storedVolumeAtom)
     const [muted] = useAtom(vc_storedMutedAtom)
     const [playbackRate, setPlaybackRate] = useAtom(vc_storedPlaybackRateAtom)
@@ -609,7 +611,9 @@ export function VideoCore(props: VideoCoreProps) {
     const handleEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         log.info("Video ended")
         onEnded?.()
-        if (autoNext) {
+        // Auto-next if autoNext is on OR if bingeMode is on
+        // bingeMode automatically skips ED and moves to next episode
+        if (autoNext || bingeMode) {
             // videoRef?.current?.pause()
             playEpisode("next")
         }

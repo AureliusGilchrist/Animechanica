@@ -24,6 +24,7 @@ import {
 } from "@/app/(main)/entry/_containers/torrent-stream/torrent-stream-page"
 import { useHandlePlayMedia } from "@/app/(main)/entry/_lib/handle-play-media"
 import { HoverCard } from "@/components/ui/hover-card"
+import { vc_skipFillerAtom } from "@/app/(main)/_features/video-core/video-core.atoms"
 import { logger } from "@/lib/helpers/debug"
 import { atom, useAtomValue } from "jotai"
 import { useAtom, useSetAtom } from "jotai/react"
@@ -104,6 +105,7 @@ export function useVideoCorePlaylist() {
     const playlistState = useAtomValue(vc_playlistState)
     const streamType = useAtomValue(nativePlayer_stateAtom)?.playbackInfo?.streamType
     const animeEntry = playlistState?.animeEntry
+    const skipFiller = useAtomValue(vc_skipFillerAtom)
 
     const setTorrentSearch = useSetAtom(__torrentSearch_selectionAtom)
     const setTorrentSearchEpisode = useSetAtom(__torrentSearch_selectionEpisodeAtom)
@@ -259,6 +261,23 @@ export function useVideoCorePlaylist() {
         if (!episode) {
             log.info("Episode not found for", which)
             return
+        }
+
+        // Skip filler episodes if skipFiller is enabled
+        // Find the next non-filler episode when going "next"
+        if (skipFiller && which === "next" && episode?.episodeMetadata?.isFiller) {
+            const currentProgressNumber = playlistState?.currentEpisode?.progressNumber ?? 0
+            const nonFillerEpisode = playlistState?.episodes?.find(
+                ep => ep.progressNumber > currentProgressNumber && !ep.episodeMetadata?.isFiller
+            )
+            if (nonFillerEpisode) {
+                log.info("Skipping filler episode", episode.progressNumber, "to", nonFillerEpisode.progressNumber)
+                toast.info(`Skipped filler episode ${episode.progressNumber}`)
+                episode = nonFillerEpisode
+            } else {
+                log.info("No non-filler episode found after", episode.progressNumber)
+                // If no non-filler episode found, still play the filler
+            }
         }
 
         log.info("Playing episode", episode)

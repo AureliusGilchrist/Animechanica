@@ -131,7 +131,7 @@ export function CollectionLists({ collectionList, genres, storedProviders, showS
 
     return (
         <PageWrapper
-            className="p-4 space-y-4 relative z-[4]"
+            className="p-4 space-y-8 relative z-[4]"
             data-manga-library-view-collection-lists-container
             {...{
                 initial: { opacity: 0, y: 60 },
@@ -182,7 +182,7 @@ export function FilteredCollectionLists({ collectionList, genres, showStatuses, 
 
     return (
         <PageWrapper
-            className="p-4 space-y-4 relative z-[4]"
+            className="p-4 space-y-8 relative z-[4]"
             data-manga-library-view-filtered-collection-lists-container
             {...{
                 initial: { opacity: 0, y: 60 },

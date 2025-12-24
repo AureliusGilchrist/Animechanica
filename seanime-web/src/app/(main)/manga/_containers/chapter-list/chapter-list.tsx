@@ -301,10 +301,13 @@ export function ChapterList(props: ChapterListProps) {
                         "flex items-center gap-2",
                         isRead && "opacity-50"
                     )}>
-                        {downloadedVersion && (
+                        {(downloadedVersion || isChapterQueued(row.original)) && (
                             <MdOutlineOfflinePin 
-                                className="text-[--green] text-lg flex-shrink-0" 
-                                title={`Downloaded (Source: ${row.original.title})`} 
+                                className={cn(
+                                    "text-lg flex-shrink-0",
+                                    downloadedVersion ? "text-[--green]" : "text-white"
+                                )}
+                                title={downloadedVersion ? `Downloaded (Source: ${row.original.title})` : "Queued"} 
                             />
                         )}
                         <span title={downloadedVersion ? `Source: ${row.original.title}` : undefined}>
@@ -357,7 +360,6 @@ export function ChapterList(props: ChapterListProps) {
                             onClick={() => downloadChapters([row.original])}
                             icon={<MdOutlineDownloadForOffline className="text-2xl" />}
                         />}
-                        {isChapterQueued(row.original) && <p className="text-[--muted]">Queued</p>}
                         <IconButton
                             intent="gray-subtle"
                             size="sm"

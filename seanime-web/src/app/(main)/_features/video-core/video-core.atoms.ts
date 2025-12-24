@@ -1,3 +1,4 @@
+import { atom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 
 export type VideoCoreSettings = {
@@ -83,3 +84,11 @@ export const vc_autoSkipOPEDAtom = atomWithStorage("sea-video-core-auto-skip-op-
 export const vc_storedVolumeAtom = atomWithStorage("sea-video-core-volume", 1, undefined, { getOnInit: true })
 export const vc_storedMutedAtom = atomWithStorage("sea-video-core-muted", false, undefined, { getOnInit: true })
 export const vc_storedPlaybackRateAtom = atomWithStorage("sea-video-core-playback-rate", 1, undefined, { getOnInit: true })
+
+// Binge mode settings
+// When enabled: skips ED automatically and moves to next episode while maintaining fullscreen
+export const vc_bingeModeAtom = atomWithStorage("sea-video-core-binge-mode", false, undefined, { getOnInit: true })
+// Skip intro/opening automatically
+export const vc_skipIntroAtom = atomWithStorage("sea-video-core-skip-intro", false, undefined, { getOnInit: true })
+// Skip filler episodes automatically
+export const vc_skipFillerAtom = atomWithStorage("sea-video-core-skip-filler", false, undefined, { getOnInit: true })

@@ -121,7 +121,7 @@ export function MangaToReadList(props: MangaToReadListProps) {
                     {filteredEntries.map(entry => (
                         <div
                             key={entry!.media?.id}
-                            className="scale-[0.85] origin-top-left"
+                            className="scale-[0.98] origin-top-left"
                             onMouseEnter={() => {
                                 if (entry!.media?.bannerImage) {
                                     React.startTransition(() => {

@@ -17,7 +17,13 @@ import {
 } from "@/app/(main)/_features/video-core/video-core"
 import { vc_doFlashAction } from "@/app/(main)/_features/video-core/video-core-action-display"
 import { VIDEOCORE_PREVIEW_CAPTURE_INTERVAL_SECONDS, VIDEOCORE_PREVIEW_THUMBNAIL_SIZE } from "@/app/(main)/_features/video-core/video-core-preview"
-import { vc_autoSkipOPEDAtom, vc_highlightOPEDChaptersAtom, vc_showChapterMarkersAtom } from "@/app/(main)/_features/video-core/video-core.atoms"
+import {
+    vc_autoSkipOPEDAtom,
+    vc_bingeModeAtom,
+    vc_highlightOPEDChaptersAtom,
+    vc_showChapterMarkersAtom,
+    vc_skipIntroAtom,
+} from "@/app/(main)/_features/video-core/video-core.atoms"
 import { vc_formatTime, vc_getChapterType, vc_getOPEDChapters } from "@/app/(main)/_features/video-core/video-core.utils"
 import { cn } from "@/components/ui/core/styling"
 import { logger } from "@/lib/helpers/debug"
@@ -60,6 +66,8 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
     const action = useSetAtom(vc_dispatchAction)
     const showChapterMarkers = useAtomValue(vc_showChapterMarkersAtom)
     const autoSkipIntroOutro = useAtomValue(vc_autoSkipOPEDAtom)
+    const bingeMode = useAtomValue(vc_bingeModeAtom)
+    const skipIntro = useAtomValue(vc_skipIntroAtom)
     const flashAction = useSetAtom(vc_doFlashAction)
     const [skipOpeningTime, setSkipOpeningTime] = useAtom(vc_skipOpeningTime)
     const [skipEndingTime, setSkipEndingTime] = useAtom(vc_skipEndingTime)
@@ -111,20 +119,26 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
     const opEdChapters = vc_getOPEDChapters(chapters)
 
     // handle auto skip
+    // Logic:
+    // - autoSkipIntroOutro: skips both OP and ED
+    // - skipIntro: only skips OP (intro)
+    // - bingeMode: skips ED and triggers next episode (handled in video-core.tsx)
     React.useEffect(() => {
         if (!opEdChapters.opening?.end && !opEdChapters.ending?.end) return
         if (isNaN(duration) || duration <= 1) return
 
-        // e.currentTarget.currentTime >= aniSkipData.op.interval.startTime &&
-        //             e.currentTarget.currentTime < aniSkipData.op.interval.endTime
+        // Handle opening/intro skip
+        // Skip if: autoSkipIntroOutro is on OR skipIntro is on
+        // Note: bingeMode does NOT skip intros (user wants to watch them)
         if (
             opEdChapters.opening &&
             opEdChapters.opening.end &&
             currentTime >= opEdChapters.opening.start &&
             currentTime < opEdChapters.opening.end
         ) {
-            if (autoSkipIntroOutro && !restoreProgressTo) {
-                console.log("auto skip", opEdChapters.opening.end)
+            const shouldAutoSkipOpening = (autoSkipIntroOutro || skipIntro) && !restoreProgressTo
+            if (shouldAutoSkipOpening) {
+                console.log("auto skip opening", opEdChapters.opening.end)
                 action({ type: "seekTo", payload: { time: opEdChapters.opening.end } })
                 flashAction({ message: "Skipped OP", duration: 1000 })
             } else {
@@ -134,6 +148,9 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
             setSkipOpeningTime(0)
         }
 
+        // Handle ending skip
+        // Skip if: autoSkipIntroOutro is on OR bingeMode is on
+        // bingeMode will also trigger next episode (handled in video-core.tsx via vc_bingeModeSkippedEnding atom)
         if (
             opEdChapters.ending &&
             opEdChapters.ending.end &&
@@ -141,10 +158,15 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
             currentTime < opEdChapters.ending.end &&
             currentTime < duration
         ) {
-            if (autoSkipIntroOutro && !restoreProgressTo) {
-                console.log("auto skip", opEdChapters.ending.end)
+            const shouldAutoSkipEnding = (autoSkipIntroOutro || bingeMode) && !restoreProgressTo
+            if (shouldAutoSkipEnding) {
+                console.log("auto skip ending", opEdChapters.ending.end)
                 action({ type: "seekTo", payload: { time: opEdChapters.ending.end } })
-                flashAction({ message: "Skipped ED", duration: 1000 })
+                if (bingeMode && !autoSkipIntroOutro) {
+                    flashAction({ message: "Binge Mode: Skipped ED", duration: 1000 })
+                } else {
+                    flashAction({ message: "Skipped ED", duration: 1000 })
+                }
             } else {
                 setSkipEndingTime(opEdChapters.ending.end)
             }
@@ -152,7 +174,7 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
             setSkipEndingTime(0)
         }
 
-    }, [currentTime, autoSkipIntroOutro, opEdChapters, duration, restoreProgressTo])
+    }, [currentTime, autoSkipIntroOutro, skipIntro, bingeMode, opEdChapters, duration, restoreProgressTo])
 
     // start seeking
     function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
