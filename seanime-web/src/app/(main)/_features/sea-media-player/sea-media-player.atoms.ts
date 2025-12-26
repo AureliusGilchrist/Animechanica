@@ -7,6 +7,8 @@ export const __seaMediaPlayer_autoNextAtom = atomWithStorage("sea-media-player-a
 
 export const __seaMediaPlayer_autoSkipIntroOutroAtom = atomWithStorage("sea-media-player-autoskip-intro-outro", false, undefined, { getOnInit: true })
 
+export const __seaMediaPlayer_bingeModeAtom = atomWithStorage("sea-media-player-binge-mode", false, undefined, { getOnInit: true })
+
 export const __seaMediaPlayer_discreteControlsAtom = atomWithStorage("sea-media-player-discrete-controls", false, undefined, { getOnInit: true })
 
 export const __seaMediaPlayer_volumeAtom = atomWithStorage("sea-media-player-volume", 1, undefined, { getOnInit: true })

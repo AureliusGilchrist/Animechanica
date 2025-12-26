@@ -13,6 +13,7 @@ const (
 	TorrentStatusPaused      TorrentStatus = "paused"
 	TorrentStatusOther       TorrentStatus = "other"
 	TorrentStatusStopped     TorrentStatus = "stopped"
+	TorrentStatusCompleted   TorrentStatus = "completed"
 )
 
 type (
@@ -141,11 +142,13 @@ func (r *Repository) FromQbitTorrent(t *qbittorrent_model.Torrent) *Torrent {
 // fromQbitTorrentStatus returns a normalized status for the torrent.
 func fromQbitTorrentStatus(st qbittorrent_model.TorrentState) TorrentStatus {
 	if st == qbittorrent_model.StateQueuedUP ||
-		st == qbittorrent_model.StateStalledUP ||
 		st == qbittorrent_model.StateForcedUP ||
 		st == qbittorrent_model.StateCheckingUP ||
 		st == qbittorrent_model.StateUploading {
 		return TorrentStatusSeeding
+	} else if st == qbittorrent_model.StateStalledUP {
+		// Stalled upload means torrent is 100% complete but has no peers to seed to
+		return TorrentStatusCompleted
 	} else if st == qbittorrent_model.StatePausedDL || st == qbittorrent_model.StateStoppedDL {
 		return TorrentStatusPaused
 	} else if st == qbittorrent_model.StateDownloading ||

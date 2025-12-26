@@ -6,10 +6,12 @@ import React from "react"
 import { AiFillPlayCircle } from "react-icons/ai"
 import { MdPlaylistPlay } from "react-icons/md"
 import { RxSlider } from "react-icons/rx"
+import { TbPlayerTrackNext } from "react-icons/tb"
 import {
     __seaMediaPlayer_autoNextAtom,
     __seaMediaPlayer_autoPlayAtom,
     __seaMediaPlayer_autoSkipIntroOutroAtom,
+    __seaMediaPlayer_bingeModeAtom,
     __seaMediaPlayer_discreteControlsAtom,
 } from "./sea-media-player.atoms"
 
@@ -18,6 +20,7 @@ export function SeaMediaPlayerPlaybackSubmenu() {
     const [autoPlay, setAutoPlay] = useAtom(__seaMediaPlayer_autoPlayAtom)
     const [autoNext, setAutoNext] = useAtom(__seaMediaPlayer_autoNextAtom)
     const [autoSkipIntroOutro, setAutoSkipIntroOutro] = useAtom(__seaMediaPlayer_autoSkipIntroOutroAtom)
+    const [bingeMode, setBingeMode] = useAtom(__seaMediaPlayer_bingeModeAtom)
     const [discreteControls, setDiscreteControls] = useAtom(__seaMediaPlayer_discreteControlsAtom)
 
     return (
@@ -67,6 +70,24 @@ export function SeaMediaPlayerPlaybackSubmenu() {
                         fieldClass="py-2 px-2"
                         value={autoSkipIntroOutro}
                         onValueChange={setAutoSkipIntroOutro}
+                    />
+                </Menu.Content>
+            </Menu.Root>
+            <Menu.Root>
+                <VdsSubmenuButton
+                    label={`Binge Mode`}
+                    hint={bingeMode ? "On" : "Off"}
+                    disabled={false}
+                    icon={TbPlayerTrackNext}
+                />
+                <Menu.Content className={submenuClass}>
+                    <Switch
+                        label="Binge mode"
+                        help="Automatically go to the next episode when the ending song starts, without exiting fullscreen."
+                        fieldClass="py-2 px-2"
+                        value={bingeMode}
+                        onValueChange={setBingeMode}
+                        fieldHelpTextClass="max-w-xs"
                     />
                 </Menu.Content>
             </Menu.Root>

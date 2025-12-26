@@ -1,0 +1,13 @@
+query StaffDetails($id: Int) {
+  Staff(id: $id) {
+    id
+    name {
+      full
+    }
+    staffMedia (perPage: 80, sort: TRENDING_DESC, type: ANIME) {
+      nodes {
+        ...baseAnime
+      }
+    }
+  }
+}

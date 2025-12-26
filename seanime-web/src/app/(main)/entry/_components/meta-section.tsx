@@ -4,6 +4,7 @@ import { TrailerModal } from "@/app/(main)/_features/anime/_components/trailer-m
 import { AnimeAutoDownloaderButton } from "@/app/(main)/_features/anime/_containers/anime-auto-downloader-button"
 import { ToggleLockFilesButton } from "@/app/(main)/_features/anime/_containers/toggle-lock-files-button"
 import { AnimeEntryStudio } from "@/app/(main)/_features/media/_components/anime-entry-studio"
+import { useLibraryExplorer } from "@/app/(main)/_features/library-explorer/library-explorer.atoms"
 import {
     AnimeEntryRankings,
     MediaEntryAudienceScore,
@@ -35,6 +36,7 @@ import { IoInformationCircle } from "react-icons/io5"
 import { LuExternalLink } from "react-icons/lu"
 import { MdOutlineConnectWithoutContact } from "react-icons/md"
 import { SiAnilist } from "react-icons/si"
+import { BiFolder } from "react-icons/bi"
 import { useNakamaStatus } from "../../_features/nakama/nakama-manager"
 import { PluginAnimePageButtons } from "../../_features/plugin/actions/plugin-actions"
 
@@ -56,8 +58,30 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
     const { entry, details } = props
     const ts = useThemeSettings()
     const nakamaStatus = useNakamaStatus()
+    const { openDirInLibraryExplorer } = useLibraryExplorer()
 
     if (!entry.media) return null
+
+    const staff = React.useMemo(() => {
+        const edges = details?.staff?.edges ?? []
+        // Filter for directors, writers, and key staff
+        let filtered = edges.filter(edge => {
+            const role = edge?.role?.toLowerCase() || ""
+            return role.includes("director") || role.includes("original creator") || role.includes("script") || role.includes("series composition")
+        })
+        // If none found, take the first few staff members
+        if (filtered.length === 0) {
+            filtered = edges.slice(0, 3)
+        }
+        return filtered
+            .map(edge => ({
+                id: edge?.node?.id,
+                name: edge?.node?.name?.full ?? "Unknown",
+                role: edge?.role,
+            }))
+            .filter(s => !!s.id && !!s.name)
+            .slice(0, 3) // Limit to 3 staff members
+    }, [details?.staff?.edges])
 
     const { hasTorrentProvider } = useHasTorrentProvider()
     const { hasDebridService } = useHasDebridService()
@@ -112,6 +136,28 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
                         )}
 
                         <MediaEntryGenresList genres={details?.genres} />
+
+                        {!!staff?.length && (
+                            <div
+                                className="flex flex-wrap items-center gap-2 text-sm text-[--muted] w-full"
+                                data-anime-meta-section-staff
+                            >
+                                <span className="uppercase tracking-wide text-xs text-[--muted]">
+                                    Staff
+                                </span>
+                                {staff.map(s => (
+                                    <SeaLink
+                                        key={s.id}
+                                        href={`https://anilist.co/staff/${s.id}`}
+                                        target="_blank"
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-white/20 hover:border-white/60 transition-colors text-[--foreground]"
+                                    >
+                                        {s.name}
+                                        <LuExternalLink className="text-xs" />
+                                    </SeaLink>
+                                ))}
+                            </div>
+                        )}
 
                         <div
                             data-anime-meta-section-rankings-container
@@ -169,6 +215,21 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
                     <AnimeAutoDownloaderButton entry={entry} size="md" />
 
                     {isLibraryView && !entry._isNakamaEntry && !!entry.libraryData && <>
+                        {!!entry.libraryData.sharedPath && (
+                            <Tooltip
+                                trigger={
+                                    <IconButton
+                                        size="sm"
+                                        intent="gray-link"
+                                        className="px-0"
+                                        icon={<BiFolder className="text-lg" />}
+                                        onClick={() => openDirInLibraryExplorer(entry.libraryData!.sharedPath)}
+                                    />
+                                }
+                            >
+                                Open in Library Explorer
+                            </Tooltip>
+                        )}
                         <MediaSyncTrackButton mediaId={entry.mediaId} type="anime" size="md" />
                         <AnimeEntrySilenceToggle mediaId={entry.mediaId} size="md" />
                         <ToggleLockFilesButton

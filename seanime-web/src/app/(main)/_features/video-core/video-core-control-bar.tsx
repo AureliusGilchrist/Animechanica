@@ -39,8 +39,10 @@ import {
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
     vc_bingeModeAtom,
+    vc_bingeSkipFillerAtom,
     vc_highlightOPEDChaptersAtom,
     vc_showChapterMarkersAtom,
+    vc_skipEndingAtom,
     vc_skipFillerAtom,
     vc_skipIntroAtom,
     vc_storedMutedAtom,
@@ -73,7 +75,7 @@ import {
     LuVolume2,
     LuVolumeOff,
 } from "react-icons/lu"
-import { MdOutlineFilterListOff, MdSkipNext, MdSpeed } from "react-icons/md"
+import { MdOutlineFilterListOff, MdOutlineSkipNext, MdSkipNext, MdSpeed } from "react-icons/md"
 import { RiPauseLargeLine, RiPlayLargeLine } from "react-icons/ri"
 import { RxEnterFullScreen, RxExitFullScreen } from "react-icons/rx"
 import { TbArrowForwardUp, TbPictureInPicture, TbPictureInPictureOff, TbPlayerTrackNext } from "react-icons/tb"
@@ -685,7 +687,9 @@ export function VideoCoreSettingsButton() {
     const [autoPlay, setAutoPlay] = useAtom(vc_autoPlayVideoAtom)
     const [autoSkipOPED, setAutoSkipOPED] = useAtom(vc_autoSkipOPEDAtom)
     const [bingeMode, setBingeMode] = useAtom(vc_bingeModeAtom)
+    const [bingeSkipFiller, setBingeSkipFiller] = useAtom(vc_bingeSkipFillerAtom)
     const [skipIntro, setSkipIntro] = useAtom(vc_skipIntroAtom)
+    const [skipEnding, setSkipEnding] = useAtom(vc_skipEndingAtom)
     const [skipFiller, setSkipFiller] = useAtom(vc_skipFillerAtom)
 
     const [menuOpen, setMenuOpen] = useAtom(vc_menuOpen)
@@ -726,6 +730,7 @@ export function VideoCoreSettingsButton() {
                     <VideoCoreMenuOption title="Skip OP/ED" icon={TbArrowForwardUp} value={autoSkipOPED ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Binge Mode" icon={TbPlayerTrackNext} value={bingeMode ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Skip Intro" icon={MdSkipNext} value={skipIntro ? "On" : "Off"} />
+                    <VideoCoreMenuOption title="Skip Ending" icon={MdOutlineSkipNext} value={skipEnding ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Skip Filler" icon={MdOutlineFilterListOff} value={skipFiller ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Anime4K" icon={LuSparkles} value={currentAnime4kOption?.label || "Off"} />
                     <VideoCoreMenuOption title="Appearance" icon={LuPaintbrush} />
@@ -798,6 +803,15 @@ export function VideoCoreSettingsButton() {
                             }}
                             value={bingeMode ? 1 : 0}
                         />
+                        <Switch
+                            label="Skip filler while binging"
+                            help="Automatically hop over filler episodes when binge mode jumps ahead."
+                            fieldClass="hover:bg-transparent hover:border-transparent px-0 ml-0 w-full"
+                            size="sm"
+                            value={bingeSkipFiller}
+                            onValueChange={setBingeSkipFiller}
+                            disabled={!bingeMode}
+                        />
                     </VideoCoreMenuOption>
                     <VideoCoreMenuOption title="Skip Intro" icon={MdSkipNext}>
                         <p className="text-[--muted] text-sm mb-2">
@@ -812,6 +826,21 @@ export function VideoCoreSettingsButton() {
                                 setSkipIntro(!!v)
                             }}
                             value={skipIntro ? 1 : 0}
+                        />
+                    </VideoCoreMenuOption>
+                    <VideoCoreMenuOption title="Skip Ending" icon={MdOutlineSkipNext}>
+                        <p className="text-[--muted] text-sm mb-2">
+                            Automatically skips anime endings/outros.
+                        </p>
+                        <VideoCoreSettingSelect
+                            options={[
+                                { label: "On", value: 1 },
+                                { label: "Off", value: 0 },
+                            ]}
+                            onValueChange={(v: number) => {
+                                setSkipEnding(!!v)
+                            }}
+                            value={skipEnding ? 1 : 0}
                         />
                     </VideoCoreMenuOption>
                     <VideoCoreMenuOption title="Skip Filler" icon={MdOutlineFilterListOff}>

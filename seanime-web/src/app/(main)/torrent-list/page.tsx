@@ -110,6 +110,7 @@ function Content() {
                 <ul className="text-[--muted] flex flex-wrap gap-4">
                     <li>Downloading: {data?.filter(t => t.status === "downloading" || t.status === "paused")?.length ?? 0}</li>
                     <li>Seeding: {data?.filter(t => t.status === "seeding")?.length ?? 0}</li>
+                    <li>Completed: {data?.filter(t => t.status === "completed")?.length ?? 0}</li>
                     {!!data?.filter(t => t.status === "seeding")?.length && <li>
                         <Button
                             size="xs"
@@ -171,6 +172,7 @@ const TorrentItem = React.memo(function TorrentItem({ torrent, onTorrentAction, 
                             "bg-green-300": torrent.status === "downloading",
                             "bg-gray-500": torrent.status === "paused",
                             "bg-blue-500": torrent.status === "seeding",
+                            "bg-brand-300": torrent.status === "completed",
                         },
                     )}
                     style={{ width: `${String(Math.floor(torrent.progress * 100))}%` }}
@@ -202,12 +204,13 @@ const TorrentItem = React.memo(function TorrentItem({ torrent, onTorrentAction, 
                     <strong
                         className={cn({
                             "text-blue-300": torrent.status === "seeding",
+                            "text-brand-300": torrent.status === "completed",
                         })}
                     >{capitalize(torrent.status)}</strong>
                 </div>
             </div>
             <div data-torrent-item-actions className="flex-none flex gap-2 items-center">
-                {torrent.status !== "seeding" ? (
+                {torrent.status !== "seeding" && torrent.status !== "completed" ? (
                     <>
                         {torrent.status !== "paused" && <Tooltip
                             trigger={<IconButton

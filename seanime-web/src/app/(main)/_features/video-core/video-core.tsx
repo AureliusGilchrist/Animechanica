@@ -40,6 +40,7 @@ import {
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
     vc_bingeModeAtom,
+    vc_skipEndingAtom,
     vc_settings,
     vc_storedMutedAtom,
     vc_storedPlaybackRateAtom,
@@ -299,6 +300,7 @@ export function VideoCore(props: VideoCoreProps) {
     const [autoNext] = useAtom(vc_autoNextAtom)
     const [autoPlay] = useAtom(vc_autoPlayVideoAtom)
     const [autoSkipOpeningOutro] = useAtom(vc_autoSkipOPEDAtom)
+    const [skipEnding] = useAtom(vc_skipEndingAtom)
     const [bingeMode] = useAtom(vc_bingeModeAtom)
     const [volume] = useAtom(vc_storedVolumeAtom)
     const [muted] = useAtom(vc_storedMutedAtom)

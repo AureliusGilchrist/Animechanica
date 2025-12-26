@@ -90,5 +90,9 @@ export const vc_storedPlaybackRateAtom = atomWithStorage("sea-video-core-playbac
 export const vc_bingeModeAtom = atomWithStorage("sea-video-core-binge-mode", false, undefined, { getOnInit: true })
 // Skip intro/opening automatically
 export const vc_skipIntroAtom = atomWithStorage("sea-video-core-skip-intro", false, undefined, { getOnInit: true })
-// Skip filler episodes automatically
+// Skip ending/outro automatically
+export const vc_skipEndingAtom = atomWithStorage("sea-video-core-skip-ending", false, undefined, { getOnInit: true })
+// Skip filler episodes automatically (general)
 export const vc_skipFillerAtom = atomWithStorage("sea-video-core-skip-filler", false, undefined, { getOnInit: true })
+// Additional binge-mode-only filler skipping
+export const vc_bingeSkipFillerAtom = atomWithStorage("sea-video-core-binge-skip-filler", false, undefined, { getOnInit: true })

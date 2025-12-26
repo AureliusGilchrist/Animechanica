@@ -19,6 +19,7 @@ import {
     __seaMediaPlayer_autoNextAtom,
     __seaMediaPlayer_autoPlayAtom,
     __seaMediaPlayer_autoSkipIntroOutroAtom,
+    __seaMediaPlayer_bingeModeAtom,
     __seaMediaPlayer_discreteControlsAtom,
     __seaMediaPlayer_isFullscreenAtom,
     __seaMediaPlayer_mutedAtom,
@@ -131,6 +132,7 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
     const autoNext = useAtomValue(__seaMediaPlayer_autoNextAtom)
     const discreteControls = useAtomValue(__seaMediaPlayer_discreteControlsAtom)
     const autoSkipIntroOutro = useAtomValue(__seaMediaPlayer_autoSkipIntroOutroAtom)
+    const bingeMode = useAtomValue(__seaMediaPlayer_bingeModeAtom)
     const [volume, setVolume] = useAtom(__seaMediaPlayer_volumeAtom)
     const [muted, setMuted] = useAtom(__seaMediaPlayer_mutedAtom)
 
@@ -247,6 +249,11 @@ export function SeaMediaPlayer(props: SeaMediaPlayerProps) {
             setShowSkipEndingButton(true)
             if (autoSkipIntroOutro) {
                 seekTo(aniSkipData?.ed?.interval?.endTime || 0)
+            }
+            // Binge mode: automatically go to next episode when ending starts
+            if (bingeMode && !wentToNextEpisodeRef.current && onGoToNextEpisode) {
+                wentToNextEpisodeRef.current = true
+                onGoToNextEpisode()
             }
         } else {
             setShowSkipEndingButton(false)

@@ -4568,7 +4568,7 @@ export type TorrentClient_Torrent = {
  * - Filename: torrent.go
  * - Package: torrent_client
  */
-export type TorrentClient_TorrentStatus = "downloading" | "seeding" | "paused" | "other" | "stopped"
+export type TorrentClient_TorrentStatus = "downloading" | "seeding" | "paused" | "other" | "stopped" | "completed"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Torrentstream
