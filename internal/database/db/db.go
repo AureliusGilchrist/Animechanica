@@ -112,6 +112,7 @@ func migrateTables(db *gorm.DB) error {
 		&models.TorrentPreMatch{},
 		&models.TorrentMediaAssociation{},
 		&models.MangaToReadItem{},
+		&models.EnMasseDownloaderState{},
 		//&models.MangaChapterContainer{},
 	)
 	if err != nil {

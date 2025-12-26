@@ -1358,6 +1358,53 @@ export const API_ENDPOINTS = {
             endpoint: "/api/v1/manga/to-read/check",
         },
     },
+    EN_MASSE_DOWNLOADER: {
+        /**
+         *  @description
+         *  Route returns the current status of the en masse downloader.
+         */
+        GetEnMasseDownloaderStatus: {
+            key: "EN-MASSE-DOWNLOADER-get-status",
+            methods: ["GET"],
+            endpoint: "/api/v1/manga/en-masse/status",
+        },
+        /**
+         *  @description
+         *  Route loads and parses a HakuneKo manga export file.
+         */
+        LoadHakunekoFile: {
+            key: "EN-MASSE-DOWNLOADER-load-file",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/en-masse/load-file",
+        },
+        /**
+         *  @description
+         *  Route starts the en masse downloader process.
+         */
+        StartEnMasseDownloader: {
+            key: "EN-MASSE-DOWNLOADER-start",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/en-masse/start",
+        },
+        /**
+         *  @description
+         *  Route stops the en masse downloader process.
+         */
+        StopEnMasseDownloader: {
+            key: "EN-MASSE-DOWNLOADER-stop",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/en-masse/stop",
+        },
+        /**
+         *  @description
+         *  Route resets the en masse downloader status.
+         */
+        ResetEnMasseDownloader: {
+            key: "EN-MASSE-DOWNLOADER-reset",
+            methods: ["POST"],
+            endpoint: "/api/v1/manga/en-masse/reset",
+        },
+    },
     MANUAL_DUMP: {
         TestDump: {
             key: "MANUAL-DUMP-test-dump",

@@ -396,6 +396,13 @@ func InitRoutes(app *core.App, e *echo.Echo) {
 	v1Manga.DELETE("/to-read", h.HandleRemoveMangaToReadItem)
 	v1Manga.POST("/to-read/check", h.HandleIsMangaInToReadList)
 
+	// En Masse Downloader
+	v1Manga.GET("/en-masse/status", h.HandleGetEnMasseDownloaderStatus)
+	v1Manga.POST("/en-masse/load-file", h.HandleLoadHakunekoFile)
+	v1Manga.POST("/en-masse/start", h.HandleStartEnMasseDownloader)
+	v1Manga.POST("/en-masse/stop", h.HandleStopEnMasseDownloader)
+	v1Manga.POST("/en-masse/reset", h.HandleResetEnMasseDownloader)
+
 	//
 	// File Cache
 	//

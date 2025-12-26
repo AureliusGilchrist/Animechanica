@@ -590,3 +590,21 @@ func (o StringSlice) Value() (driver.Value, error) {
 	}
 	return strings.Join(o, ","), nil
 }
+
+// +---------------------------+
+// | En Masse Downloader State |
+// +---------------------------+
+
+// EnMasseDownloaderState stores the persistent state of the en masse downloader
+// to allow resuming after interruption/shutdown
+type EnMasseDownloaderState struct {
+	BaseModel
+	FilePath           string `gorm:"column:file_path" json:"filePath"`
+	Provider           string `gorm:"column:provider" json:"provider"`
+	CurrentIndex       int    `gorm:"column:current_index" json:"currentIndex"`             // Index of the current manga being processed
+	TotalCount         int    `gorm:"column:total_count" json:"totalCount"`                 // Total number of manga in the file
+	ProcessedMangaJSON []byte `gorm:"column:processed_manga_json" json:"processedMangaJson"` // JSON array of processed manga info
+	FailedMangaJSON    []byte `gorm:"column:failed_manga_json" json:"failedMangaJson"`       // JSON array of failed manga info
+	QueuedChapterCount int    `gorm:"column:queued_chapter_count" json:"queuedChapterCount"`
+	IsActive           bool   `gorm:"column:is_active" json:"isActive"` // Whether the downloader should resume on startup
+}

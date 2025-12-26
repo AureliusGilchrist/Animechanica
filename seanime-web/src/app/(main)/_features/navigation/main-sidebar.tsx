@@ -39,7 +39,7 @@ import { BiChevronRight, BiExtension, BiLogIn, BiLogOut } from "react-icons/bi"
 import { FiLogIn, FiSearch } from "react-icons/fi"
 import { HiOutlineServerStack } from "react-icons/hi2"
 import { IoCloudOfflineOutline, IoHomeOutline } from "react-icons/io5"
-import { LuBookOpen, LuCalendar, LuCompass, LuRefreshCw, LuRss, LuSettings } from "react-icons/lu"
+import { LuBookOpen, LuCalendar, LuCompass, LuDownload, LuRefreshCw, LuRss, LuSettings } from "react-icons/lu"
 import { MdOutlineConnectWithoutContact } from "react-icons/md"
 import { PiArrowCircleLeftDuotone, PiArrowCircleRightDuotone } from "react-icons/pi"
 import { RiListCheck3 } from "react-icons/ri"
@@ -160,6 +160,13 @@ export function MainSidebar() {
             name: "Manga",
             href: "/manga",
             isCurrent: pathname.startsWith("/manga"),
+        }] : [],
+        ...serverStatus?.settings?.library?.enableManga ? [{
+            id: "en-masse-downloader",
+            iconType: LuDownload,
+            name: "En Masse Downloader",
+            href: "/en-masse-downloader",
+            isCurrent: pathname === "/en-masse-downloader",
         }] : [],
         {
             id: "lists",

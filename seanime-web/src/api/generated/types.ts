@@ -4957,3 +4957,57 @@ export type Video = {
     bitrate: number
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// En Masse Downloader
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * - Filepath: internal/handlers/en_masse_downloader.go
+ * - Filename: en_masse_downloader.go
+ * - Package: handlers
+ */
+export type HakunekoMangaEntry = {
+    id: string
+    title: string
+}
+
+/**
+ * - Filepath: internal/handlers/en_masse_downloader.go
+ * - Filename: en_masse_downloader.go
+ * - Package: handlers
+ */
+export type EnMasseDownloaderStatus = {
+    isRunning: boolean
+    currentMangaIndex: number
+    totalMangaCount: number
+    currentMangaTitle: string
+    currentPhase: string
+    processedManga: Array<ProcessedMangaInfo>
+    failedManga: Array<FailedMangaInfo>
+    queuedChapterCount: number
+    filePath: string
+    provider: string
+    canResume: boolean
+}
+
+/**
+ * - Filepath: internal/handlers/en_masse_downloader.go
+ * - Filename: en_masse_downloader.go
+ * - Package: handlers
+ */
+export type ProcessedMangaInfo = {
+    title: string
+    mediaId: number
+    chapterCount: number
+}
+
+/**
+ * - Filepath: internal/handlers/en_masse_downloader.go
+ * - Filename: en_masse_downloader.go
+ * - Package: handlers
+ */
+export type FailedMangaInfo = {
+    title: string
+    reason: string
+}
+

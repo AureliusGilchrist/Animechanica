@@ -213,13 +213,15 @@ func (d *Downloader) DownloadChapter(opts DownloadChapterOptions) error {
 	// Add the chapter to the download queue
 	// Calculate chapter number based on position in the full chapter list
 	chapterNumber := calculateChapterNumber(chapter.Chapter, chapter.Index, chapterContainer)
-	// For display: use calculated index + decimal part for decimals (e.g., index 50 + ".5" = "50.5")
+	// For display: use the sequential index (based on position) + decimal part for decimals
+	// e.g., if chapter is "500.5" with index 800, display as "800.5"
 	displayChapterNumber := chapterNumber
 	if strings.Contains(chapter.Chapter, ".") {
 		// Get the decimal part from the original chapter number
 		parts := strings.Split(chapter.Chapter, ".")
 		if len(parts) == 2 {
-			displayChapterNumber = chapterNumber + "." + parts[1] // e.g., "50" + "." + "5" = "50.5"
+			// Use the index-based number (chapterNumber) + decimal part
+			displayChapterNumber = chapterNumber + "." + parts[1] // e.g., "800" + "." + "5" = "800.5"
 		}
 	}
 
@@ -524,15 +526,9 @@ func (d *Downloader) hydrateMediaMap() {
 }
 
 // calculateChapterNumber determines the chapter number for a downloaded chapter's folder name.
-// For decimal chapters, uses the integer part of the original number.
-// For non-decimal chapters, uses index + 1 minus the count of decimal chapters before this one.
+// Uses index + 1 minus the count of decimal chapters before this one.
+// This gives a sequential number based on position in the chapter list.
 func calculateChapterNumber(originalChapter string, chapterIndex uint, container *ChapterContainer) string {
-	// For decimal chapters (e.g., "50.5"), use the integer part for folder naming
-	if strings.Contains(originalChapter, ".") {
-		parts := strings.Split(originalChapter, ".")
-		return parts[0]
-	}
-
 	// Count decimal chapters that come before this chapter's index
 	decimalsBefore := 0
 	for i, ch := range container.Chapters {
@@ -544,6 +540,7 @@ func calculateChapterNumber(originalChapter string, chapterIndex uint, container
 		}
 	}
 
-	// For non-decimal chapters, use index + 1 minus decimals before
+	// Use index + 1 minus decimals before for the base number
+	// This applies to both decimal and non-decimal chapters
 	return fmt.Sprintf("%d", int(chapterIndex)+1-decimalsBefore)
 }
