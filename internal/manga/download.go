@@ -449,6 +449,10 @@ func (d *Downloader) hydrateMediaMap() {
 		d.logger.Error().Err(err).Msg("manga downloader: Failed to read download directory")
 	}
 
+	// Limit concurrent metadata reads to avoid running out of file descriptors
+	const maxConcurrentMetadataReads = 32
+	sem := make(chan struct{}, maxConcurrentMetadataReads)
+
 	// Hydrate MediaMap by going through all chapter directories
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
@@ -456,6 +460,8 @@ func (d *Downloader) hydrateMediaMap() {
 		wg.Add(1)
 		go func(file os.DirEntry) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
 			if file.IsDir() {
 				// e.g. comick_1234_abc_13.5

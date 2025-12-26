@@ -38,6 +38,7 @@ type EpisodeGridItemProps = {
     minutesRemaining?: number
     episodeNumber?: number
     progressNumber?: number
+    allowDescriptionExpand?: boolean
 }
 
 export const EpisodeGridItem: React.FC<EpisodeGridItemProps & React.ComponentPropsWithoutRef<"div">> = (props) => {
@@ -68,11 +69,21 @@ export const EpisodeGridItem: React.FC<EpisodeGridItemProps & React.ComponentPro
         minutesRemaining,
         episodeNumber,
         progressNumber,
+        allowDescriptionExpand = false,
         ...rest
     } = props
 
     const serverStatus = useServerStatus()
     const ts = useThemeSettings()
+
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false)
+    const descriptionCharLimit = 220
+    const descriptionExceedsLimit = allowDescriptionExpand && !!description && description.length > descriptionCharLimit
+
+    React.useEffect(() => {
+        // Collapse description when card rerenders with different description
+        setIsDescriptionExpanded(false)
+    }, [description, allowDescriptionExpand])
 
     return <>
         <div
@@ -235,8 +246,27 @@ export const EpisodeGridItem: React.FC<EpisodeGridItemProps & React.ComponentPro
 
 
                     {!!description && !ts.hideEpisodeCardDescription &&
-                        <p data-episode-grid-item-episode-description className="text-sm text-[--muted] line-clamp-2">{description.replaceAll("`",
-                            "'")}</p>}
+                        <div className="flex flex-col gap-1">
+                            <p
+                                data-episode-grid-item-episode-description
+                                className={cn(
+                                    "text-sm text-[--muted]",
+                                    !isDescriptionExpanded && "line-clamp-2",
+                                )}
+                            >
+                                {description.replaceAll("`", "'")}
+                            </p>
+                            {descriptionExceedsLimit && (
+                                <button
+                                    type="button"
+                                    className="text-xs text-[--brand] font-semibold uppercase tracking-wide hover:opacity-80 w-fit"
+                                    onClick={() => setIsDescriptionExpanded(prev => !prev)}
+                                >
+                                    {isDescriptionExpanded ? "Show less" : "Read more"}
+                                </button>
+                            )}
+                        </div>
+                    }
                     {!!fileName && !ts.hideDownloadedEpisodeCardFilename && <p data-episode-grid-item-filename className="text-xs tracking-wider opacity-75 line-clamp-1 mt-1">{fileName}</p>}
                     {children && children}
                 </div>
