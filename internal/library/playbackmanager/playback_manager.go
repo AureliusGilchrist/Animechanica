@@ -101,6 +101,7 @@ type (
 		playbackStatusSubscribers *result.Map[string, *PlaybackStatusSubscriber]
 
 		isPlaylistActive atomic.Bool
+		playbackActive   atomic.Bool
 
 		// Session-aware progress update
 		currentSessionID                 string                                                                     // The session ID of the user who initiated the current playback
@@ -663,6 +664,11 @@ func (pm *PlaybackManager) Cancel() error {
 
 func (pm *PlaybackManager) SetPlaylistActive(isActive bool) {
 	pm.isPlaylistActive.Store(isActive)
+}
+
+// IsPlaybackActive reports whether any playback session is currently active.
+func (pm *PlaybackManager) IsPlaybackActive() bool {
+	return pm.playbackActive.Load()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

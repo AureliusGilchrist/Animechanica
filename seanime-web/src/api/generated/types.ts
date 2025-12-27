@@ -4967,7 +4967,6 @@ export type Video = {
  * - Package: handlers
  */
 export type HakunekoMangaEntry = {
-    id: string
     title: string
 }
 

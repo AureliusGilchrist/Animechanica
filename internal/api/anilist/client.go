@@ -265,6 +265,11 @@ var sentRateLimitWarningTime = time.Now().Add(-10 * time.Second)
 func (ac *AnilistClientImpl) customDoFunc(ctx context.Context, req *http.Request, gqlInfo *clientv2.GQLRequestInfo, res interface{}) (err error) {
 	var rlRemainingStr string
 
+	if err := acquireAniListSlot(ctx); err != nil {
+		return err
+	}
+	defer releaseAniListSlot()
+
 	reqTime := time.Now()
 	defer func() {
 		timeSince := time.Since(reqTime)

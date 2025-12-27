@@ -188,6 +188,13 @@ func (cd *Downloader) Run() {
 
 	cd.logger.Debug().Msg("chapter downloader: Starting queue")
 
+	if cd.cancelCh != nil {
+		select {
+		case <-cd.cancelCh:
+		default:
+			close(cd.cancelCh)
+		}
+	}
 	cd.cancelCh = make(chan struct{})
 
 	cd.queue.Run()
@@ -198,15 +205,15 @@ func (cd *Downloader) Stop() {
 	cd.mu.Lock()
 	defer cd.mu.Unlock()
 
-	defer func() {
-		if r := recover(); r != nil {
-			cd.logger.Error().Msgf("chapter downloader: cancelCh is already closed")
+	if cd.cancelCh != nil {
+		select {
+		case <-cd.cancelCh:
+			// already closed
+		default:
+			close(cd.cancelCh) // Cancel download process
 		}
-	}()
-
-	cd.cancelCh = make(chan struct{})
-
-	close(cd.cancelCh) // Cancel download process
+		cd.cancelCh = nil
+	}
 
 	cd.queue.Stop()
 }

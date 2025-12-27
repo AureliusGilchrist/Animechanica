@@ -11,6 +11,7 @@ import (
 	"seanime/internal/events"
 	"seanime/internal/manga"
 	"seanime/internal/platforms/shared_platform"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,11 +21,12 @@ import (
 const (
 	// MaxMangaInQueue is the maximum number of distinct manga that can be in the download queue at once
 	MaxMangaInQueue = 50
+
+	offlineErrorThreshold = 3
 )
 
 // HakunekoMangaEntry represents a manga entry from the HakuneKo export file
 type HakunekoMangaEntry struct {
-	ID    string `json:"id"`
 	Title string `json:"title"`
 }
 
@@ -224,7 +226,14 @@ func (h *Handler) HandleStopEnMasseDownloader(c echo.Context) error {
 
 	// Signal cancellation
 	if enMasseDownloaderCancelCh != nil {
-		close(enMasseDownloaderCancelCh)
+		select {
+		case <-enMasseDownloaderCancelCh:
+			// already closed
+		default:
+			close(enMasseDownloaderCancelCh)
+		}
+		enMasseDownloaderCancelCh = nil
+		enMasseDownloaderStatus.CurrentPhase = "stopping"
 	}
 
 	return h.RespondWithData(c, true)
@@ -323,8 +332,157 @@ func (h *Handler) runEnMasseDownloader(
 
 	ctx := context.Background()
 
+	updateStatus := func(mutator func(*EnMasseDownloaderStatus)) {
+		enMasseDownloaderMu.Lock()
+		defer enMasseDownloaderMu.Unlock()
+		mutator(enMasseDownloaderStatus)
+	}
+
+	isPlaybackActive := func() bool {
+		return h.App.PlaybackManager != nil && h.App.PlaybackManager.IsPlaybackActive()
+	}
+
+	waitForOfflineMode := func(currentIndex int, resumePhase string) bool {
+		if !h.App.IsOffline() {
+			return false
+		}
+
+		h.App.Logger.Warn().Msg("en-masse: App offline, pausing downloader")
+		for h.App.IsOffline() {
+			updateStatus(func(status *EnMasseDownloaderStatus) {
+				status.CurrentPhase = "waiting_offline"
+			})
+
+			select {
+			case <-cancelCh:
+				saveState(currentIndex, true)
+				h.App.WSEventManager.SendEvent(events.WarningToast, "En Masse Downloader stopped by user - progress saved")
+				return true
+			case <-time.After(5 * time.Second):
+			}
+		}
+
+		updateStatus(func(status *EnMasseDownloaderStatus) {
+			if resumePhase != "" {
+				status.CurrentPhase = resumePhase
+			} else if status.CurrentPhase == "waiting_offline" {
+				status.CurrentPhase = "idle"
+			}
+		})
+
+		h.App.Logger.Info().Msg("en-masse: Offline mode cleared, resuming downloader")
+		return false
+	}
+
+	throttleForPlayback := func(currentIndex int, resumePhase string, throttle time.Duration) bool {
+		if !isPlaybackActive() {
+			return false
+		}
+
+		updateStatus(func(status *EnMasseDownloaderStatus) {
+			status.CurrentPhase = "waiting_playback"
+		})
+
+		h.App.Logger.Info().Dur("delay", throttle).Msg("en-masse: Playback active, throttling queueing")
+
+		select {
+		case <-cancelCh:
+			saveState(currentIndex, true)
+			h.App.WSEventManager.SendEvent(events.WarningToast, "En Masse Downloader stopped by user - progress saved")
+			return true
+		case <-time.After(throttle):
+		}
+
+		updateStatus(func(status *EnMasseDownloaderStatus) {
+			if resumePhase != "" {
+				status.CurrentPhase = resumePhase
+			} else if status.CurrentPhase == "waiting_playback" {
+				status.CurrentPhase = "idle"
+			}
+		})
+		return false
+	}
+
+	cooldownAfterOfflineError := func(reason string, currentIndex int, resumePhase string) bool {
+		updateStatus(func(status *EnMasseDownloaderStatus) {
+			status.CurrentPhase = "waiting_offline"
+		})
+
+		h.App.Logger.Warn().Str("reason", reason).Msg("en-masse: Connection issues detected, backing off")
+
+		select {
+		case <-cancelCh:
+			saveState(currentIndex, true)
+			h.App.WSEventManager.SendEvent(events.WarningToast, "En Masse Downloader stopped by user - progress saved")
+			return true
+		case <-time.After(5 * time.Second):
+		}
+
+		updateStatus(func(status *EnMasseDownloaderStatus) {
+			if resumePhase != "" {
+				status.CurrentPhase = resumePhase
+			} else if status.CurrentPhase == "waiting_offline" {
+				status.CurrentPhase = "idle"
+			}
+		})
+		return false
+	}
+
+	isOfflineLikeError := func(err error) bool {
+		if err == nil {
+			return false
+		}
+
+		msg := strings.ToLower(err.Error())
+		offlineIndicators := []string{
+			"offline",
+			"connection",
+			"timeout",
+			"timed out",
+			"no such host",
+			"network is unreachable",
+			"context deadline exceeded",
+			"temporarily unavailable",
+		}
+
+		for _, indicator := range offlineIndicators {
+			if strings.Contains(msg, indicator) {
+				return true
+			}
+		}
+		return false
+	}
+
+	var offlineErrorCount int
+	handleOfflineError := func(err error, currentIndex int, resumePhase string) bool {
+		if !isOfflineLikeError(err) {
+			offlineErrorCount = 0
+			return false
+		}
+
+		if h.App.IsOffline() {
+			offlineErrorCount = 0
+			return waitForOfflineMode(currentIndex, resumePhase)
+		}
+
+		offlineErrorCount++
+		if offlineErrorCount < offlineErrorThreshold {
+			return false
+		}
+
+		offlineErrorCount = 0
+		return cooldownAfterOfflineError(err.Error(), currentIndex, resumePhase)
+	}
+
 	for i := startIndex; i < len(entries); i++ {
 		entry := entries[i]
+
+		if waitForOfflineMode(i, "searching") {
+			return
+		}
+		if throttleForPlayback(i, "searching", 5*time.Second) {
+			return
+		}
 
 		// Check for cancellation
 		select {
@@ -383,8 +541,15 @@ func (h *Handler) runEnMasseDownloader(
 		cleanTitle := cleanMangaTitle(entry.Title)
 
 		// Step 1: Search for the manga on AniList
+	searchRetry:
 		searchResult, err := h.searchMangaOnAnilist(ctx, cleanTitle)
 		if err != nil {
+			if handleOfflineError(err, i, "searching") {
+				return
+			}
+			if isOfflineLikeError(err) {
+				goto searchRetry
+			}
 			h.App.Logger.Warn().Err(err).Str("title", cleanTitle).Msg("en-masse: Failed to find manga on AniList")
 			enMasseDownloaderMu.Lock()
 			enMasseDownloaderStatus.FailedManga = append(enMasseDownloaderStatus.FailedManga, FailedMangaInfo{
@@ -418,8 +583,12 @@ func (h *Handler) runEnMasseDownloader(
 		enMasseDownloaderMu.Unlock()
 
 		// Rate limit before fetching chapters
+		if throttleForPlayback(i, "fetching_chapters", 5*time.Second) {
+			return
+		}
 		time.Sleep(1 * time.Second)
 
+	fetchRetry:
 		chapterContainer, err := h.App.MangaRepository.GetMangaChapterContainer(&manga.GetMangaChapterContainerOptions{
 			Provider: provider,
 			MediaId:  mediaId,
@@ -427,6 +596,12 @@ func (h *Handler) runEnMasseDownloader(
 			Year:     searchResult.GetStartYearSafe(),
 		})
 		if err != nil {
+			if handleOfflineError(err, i, "fetching_chapters") {
+				return
+			}
+			if isOfflineLikeError(err) {
+				goto fetchRetry
+			}
 			h.App.Logger.Warn().Err(err).Str("title", cleanTitle).Msg("en-masse: Failed to fetch chapters")
 			enMasseDownloaderMu.Lock()
 			enMasseDownloaderStatus.FailedManga = append(enMasseDownloaderStatus.FailedManga, FailedMangaInfo{
@@ -469,19 +644,41 @@ func (h *Handler) runEnMasseDownloader(
 			default:
 			}
 
-			err := h.App.MangaDownloader.DownloadChapter(manga.DownloadChapterOptions{
-				Provider:  provider,
-				MediaId:   mediaId,
-				ChapterId: chapter.ID,
-				StartNow:  false, // Don't start immediately, just queue
-			})
-			if err != nil {
+			if waitForOfflineMode(i, "queueing") {
+				return
+			}
+			if throttleForPlayback(i, "queueing", 3*time.Second) {
+				return
+			}
+
+			for {
+				err := h.App.MangaDownloader.DownloadChapter(manga.DownloadChapterOptions{
+					Provider:  provider,
+					MediaId:   mediaId,
+					ChapterId: chapter.ID,
+					StartNow:  false, // Don't start immediately, just queue
+				})
+				if err == nil {
+					break
+				}
+
+				if handleOfflineError(err, i, "queueing") {
+					return
+				}
+				if isOfflineLikeError(err) {
+					continue
+				}
+
 				h.App.Logger.Warn().Err(err).Str("chapterId", chapter.ID).Msg("en-masse: Failed to queue chapter")
-				// Continue with other chapters
+				break
 			}
 
 			// Rate limit between chapter queues (400ms like the normal handler)
-			time.Sleep(400 * time.Millisecond)
+			sleepDuration := 400 * time.Millisecond
+			if isPlaybackActive() {
+				sleepDuration = 2 * time.Second
+			}
+			time.Sleep(sleepDuration)
 		}
 
 		enMasseDownloaderMu.Lock()
@@ -492,6 +689,16 @@ func (h *Handler) runEnMasseDownloader(
 		})
 		enMasseDownloaderStatus.QueuedChapterCount += chapterCount
 		enMasseDownloaderMu.Unlock()
+
+		// Add manga to the "To Read List" if not already there
+		isInList, err := h.App.Database.IsMangaInToReadList(mediaId)
+		if err == nil && !isInList {
+			if err := h.App.Database.AddMangaToReadItem(mediaId); err != nil {
+				h.App.Logger.Warn().Err(err).Int("mediaId", mediaId).Msg("en-masse: Failed to add manga to To Read List")
+			} else {
+				h.App.Logger.Debug().Int("mediaId", mediaId).Msg("en-masse: Added manga to To Read List")
+			}
+		}
 
 		h.App.Logger.Info().Str("title", cleanTitle).Int("chapters", chapterCount).Msg("en-masse: Successfully queued manga")
 

@@ -62,6 +62,8 @@ func (pm *PlaybackManager) handleTrackingStarted(status *mediaplayer.PlaybackSta
 	pm.eventMu.Lock()
 	defer pm.eventMu.Unlock()
 
+	pm.playbackActive.Store(true)
+
 	// Set the playback type
 	pm.currentPlaybackType = LocalFilePlayback
 
@@ -179,6 +181,8 @@ func (pm *PlaybackManager) handleTrackingStopped(reason string) {
 	pm.eventMu.Lock()
 	defer pm.eventMu.Unlock()
 
+	pm.playbackActive.Store(false)
+
 	pm.Logger.Debug().Msg("playback manager: Received tracking stopped event")
 	pm.sendEventToCurrentClient(events.PlaybackManagerProgressTrackingStopped, reason)
 
@@ -268,6 +272,8 @@ func (pm *PlaybackManager) handleTrackingRetry(reason string) {
 func (pm *PlaybackManager) handleStreamingTrackingStarted(status *mediaplayer.PlaybackStatus) {
 	pm.eventMu.Lock()
 	defer pm.eventMu.Unlock()
+
+	pm.playbackActive.Store(true)
 
 	if pm.currentStreamEpisode.IsAbsent() || pm.currentStreamMedia.IsAbsent() {
 		return
@@ -408,6 +414,8 @@ func (pm *PlaybackManager) handleStreamingVideoCompleted(status *mediaplayer.Pla
 func (pm *PlaybackManager) handleStreamingTrackingStopped(reason string) {
 	pm.eventMu.Lock()
 	defer pm.eventMu.Unlock()
+
+	pm.playbackActive.Store(false)
 
 	if pm.currentStreamEpisode.IsAbsent() {
 		return

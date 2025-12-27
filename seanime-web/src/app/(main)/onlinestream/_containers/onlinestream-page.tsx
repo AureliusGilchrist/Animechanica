@@ -5,6 +5,8 @@ import { MediaEpisodeInfoModal } from "@/app/(main)/_features/media/_components/
 import { useNakamaStatus } from "@/app/(main)/_features/nakama/nakama-manager"
 import { usePlaylistManager } from "@/app/(main)/_features/playlists/_containers/global-playlist-manager"
 import { SeaMediaPlayer } from "@/app/(main)/_features/sea-media-player/sea-media-player"
+import { vc_skipFillerAtom, vc_bingeModeAtom, vc_bingeSkipFillerAtom } from "@/app/(main)/_features/video-core/video-core.atoms"
+import { toast } from "sonner"
 import { SeaMediaPlayerLayout } from "@/app/(main)/_features/sea-media-player/sea-media-player-layout"
 import { SeaMediaPlayerProvider } from "@/app/(main)/_features/sea-media-player/sea-media-player-provider"
 import { EpisodePillsGrid } from "@/app/(main)/onlinestream/_components/episode-pills-grid"
@@ -91,6 +93,12 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
     const nakamaStatus = useNakamaStatus()
     const { currentPlaylist, playEpisode: playPlaylistEpisode, nextPlaylistEpisode, prevPlaylistEpisode } = usePlaylistManager()
 
+    // Skip filler settings
+    const skipFiller = useAtomValue(vc_skipFillerAtom)
+    const bingeMode = useAtomValue(vc_bingeModeAtom)
+    const bingeSkipFiller = useAtomValue(vc_bingeSkipFillerAtom)
+    const shouldSkipFiller = skipFiller || (bingeMode && bingeSkipFiller)
+
     /**
      * Set episode number on mount
      */
@@ -158,9 +166,24 @@ export function OnlinestreamPage({ animeEntry, animeEntryLoading, hideBackButton
             playPlaylistEpisode("next", true)
             return
         }
-        // check if the episode exists
-        if (episodes?.find(e => e.number === currentEpisodeNumber + 1)) {
-            handleChangeEpisodeNumber(currentEpisodeNumber + 1)
+        
+        // Find the next episode
+        let nextEpisode = episodes?.find(e => e.number === currentEpisodeNumber + 1)
+        
+        // Skip filler episodes if enabled
+        if (shouldSkipFiller && nextEpisode?.isFiller) {
+            // Find the next non-filler episode
+            const nonFillerEpisode = episodes?.find(
+                e => e.number > currentEpisodeNumber && !e.isFiller
+            )
+            if (nonFillerEpisode) {
+                toast.info(`Skipped filler episode ${nextEpisode.number}`)
+                nextEpisode = nonFillerEpisode
+            }
+        }
+        
+        if (nextEpisode) {
+            handleChangeEpisodeNumber(nextEpisode.number)
         }
     }
 

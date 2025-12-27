@@ -3,6 +3,7 @@ package anilist
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,6 +28,11 @@ func CustomQuery(body map[string]interface{}, logger *zerolog.Logger, token stri
 func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data interface{}, err error) {
 
 	var rlRemainingStr string
+
+	if err := acquireAniListSlot(context.Background()); err != nil {
+		return nil, err
+	}
+	defer releaseAniListSlot()
 
 	reqTime := time.Now()
 	defer func() {

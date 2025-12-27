@@ -608,3 +608,24 @@ type EnMasseDownloaderState struct {
 	QueuedChapterCount int    `gorm:"column:queued_chapter_count" json:"queuedChapterCount"`
 	IsActive           bool   `gorm:"column:is_active" json:"isActive"` // Whether the downloader should resume on startup
 }
+
+// +--------------------------------+
+// | Anime En Masse Downloader State |
+// +--------------------------------+
+
+// AnimeEnMasseDownloaderState stores the persistent state of the anime en masse downloader
+// to allow resuming after interruption/shutdown
+type AnimeEnMasseDownloaderState struct {
+	BaseModel
+	FilePath           string `gorm:"column:file_path" json:"filePath"`
+	Provider           string `gorm:"column:provider" json:"provider"`
+	Destination        string `gorm:"column:destination" json:"destination"`
+	CurrentIndex       int    `gorm:"column:current_index" json:"currentIndex"`               // Index of the current anime being processed
+	TotalCount         int    `gorm:"column:total_count" json:"totalCount"`                   // Total number of anime in the file
+	ProcessedAnimeJSON []byte `gorm:"column:processed_anime_json" json:"processedAnimeJson"`  // JSON array of processed anime info
+	FailedAnimeJSON    []byte `gorm:"column:failed_anime_json" json:"failedAnimeJson"`        // JSON array of failed anime info
+	SkippedAnimeJSON   []byte `gorm:"column:skipped_anime_json" json:"skippedAnimeJson"`      // JSON array of skipped anime info
+	IndexFailedJSON    []byte `gorm:"column:index_failed_json" json:"indexFailedJson"`        // JSON array of index failed anime info
+	DownloadedCount    int    `gorm:"column:downloaded_count" json:"downloadedCount"`
+	IsActive           bool   `gorm:"column:is_active" json:"isActive"` // Whether the downloader should resume on startup
+}
