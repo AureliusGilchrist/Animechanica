@@ -351,6 +351,26 @@ function AnimeEnMasseDownloader() {
                 </Card>
             )}
 
+            {/* Index Failed Anime List */}
+            {(status?.indexFailedAnime?.length ?? 0) > 0 && (
+                <Card className="p-4 space-y-4">
+                    <h3 className="font-semibold text-lg text-yellow-500">
+                        Index Failed ({status?.indexFailedAnime?.length})
+                    </h3>
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                        {status?.indexFailedAnime?.map((anime, idx) => (
+                            <div
+                                key={idx}
+                                className="p-2 bg-[--background] rounded-md"
+                            >
+                                <p className="font-medium truncate">Media ID: {anime.mediaId}</p>
+                                <p className="text-sm text-yellow-400">{anime.reason}</p>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
             {/* Info Card */}
             <Alert intent="info" title="How it works">
                 <ul className="list-disc list-inside space-y-1 text-sm">

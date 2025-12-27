@@ -26,6 +26,8 @@ const (
 
 	// Minimum seeders required for a torrent to be considered
 	MinSeeders = 4
+
+	adultAnimeProviderID = "nyaa-sukebei"
 )
 
 // AnilistAnimeEntry represents an anime entry from the AniList minified JSON file
@@ -83,6 +85,10 @@ type SkippedAnimeInfo struct {
 type IndexFailedAnimeInfo struct {
 	MediaId int    `json:"mediaId"`
 	Reason  string `json:"reason"`
+}
+
+type torrentScoringProfile struct {
+	preferDualAudio bool
 }
 
 var (
@@ -622,16 +628,27 @@ func (h *Handler) runAnimeEnMasseDownloader(
 	}
 
 	// Score a torrent based on preferences (higher is better)
-	scoreTorrent := func(t *hibiketorrent.AnimeTorrent) int {
+	formatProviderLabel := func(providerID string) string {
+		if ext, ok := h.App.TorrentRepository.GetAnimeProviderExtension(providerID); ok {
+			if ext.GetName() != "" {
+				return fmt.Sprintf("%s (%s)", ext.GetName(), providerID)
+			}
+		}
+		return providerID
+	}
+
+	scoreTorrent := func(t *hibiketorrent.AnimeTorrent, profile torrentScoringProfile) int {
 		score := 0
 		name := strings.ToLower(t.Name)
 
 		// Prefer Dual Audio or Multi Audio
-		if strings.Contains(name, "dual audio") || strings.Contains(name, "dual-audio") {
-			score += 100
-		}
-		if strings.Contains(name, "multi audio") || strings.Contains(name, "multi-audio") {
-			score += 100
+		if profile.preferDualAudio {
+			if strings.Contains(name, "dual audio") || strings.Contains(name, "dual-audio") {
+				score += 100
+			}
+			if strings.Contains(name, "multi audio") || strings.Contains(name, "multi-audio") {
+				score += 100
+			}
 		}
 
 		// Prefer higher resolution
@@ -650,7 +667,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 	}
 
 	// Find the best torrent from search results
-	findBestTorrent := func(torrents []*hibiketorrent.AnimeTorrent) *hibiketorrent.AnimeTorrent {
+	findBestTorrent := func(torrents []*hibiketorrent.AnimeTorrent, profile torrentScoringProfile) *hibiketorrent.AnimeTorrent {
 		var bestTorrent *hibiketorrent.AnimeTorrent
 		bestScore := -1
 
@@ -660,7 +677,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 				continue
 			}
 
-			score := scoreTorrent(t)
+			score := scoreTorrent(t, profile)
 			if score > bestScore {
 				bestScore = score
 				bestTorrent = t
@@ -668,6 +685,50 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		}
 
 		return bestTorrent
+	}
+
+	providerExists := func(providerID string) bool {
+		if providerID == "" {
+			return false
+		}
+		_, ok := h.App.TorrentRepository.GetAnimeProviderExtension(providerID)
+		return ok
+	}
+
+	buildProviderAttempts := func(isAdult bool) ([]string, []string) {
+		attempts := make([]string, 0, 2)
+		warnings := make([]string, 0, 1)
+
+		appendIfMissing := func(candidate string) {
+			if candidate == "" {
+				return
+			}
+			for _, existing := range attempts {
+				if existing == candidate {
+					return
+				}
+			}
+			attempts = append(attempts, candidate)
+		}
+
+		// Always try the user-selected provider first (if any)
+		appendIfMissing(provider)
+
+		// For adult entries, append Sukebei as fallback when available
+		if isAdult {
+			if providerExists(adultAnimeProviderID) {
+				appendIfMissing(adultAnimeProviderID)
+			} else {
+				warnings = append(warnings, fmt.Sprintf("Adult provider %s is unavailable, falling back to %s", adultAnimeProviderID, formatProviderLabel(provider)))
+			}
+		}
+
+		// If nothing queued yet, at least attempt the main provider (could be blank still)
+		if len(attempts) == 0 && provider != "" {
+			attempts = append(attempts, provider)
+		}
+
+		return attempts, warnings
 	}
 
 	for i := startIndex; i < len(animeIds); i++ {
@@ -764,43 +825,88 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		// Rate limit before searching
 		time.Sleep(1 * time.Second)
 
-	searchRetry:
-		searchData, err := h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
-			Provider:      provider,
-			Type:          torrent.AnimeSearchTypeSmart,
-			Media:         media,
-			Query:         "",
-			Batch:         true, // Search for batch/complete series
-			EpisodeNumber: 0,
-			BestReleases:  true,
-			Resolution:    "", // We'll filter by resolution ourselves
-		})
-		if err != nil {
-			if handleOfflineError(err, i, "searching") {
-				return
+		isAdult := media.GetIsAdult() != nil && *media.GetIsAdult()
+		providerAttempts, providerWarnings := buildProviderAttempts(isAdult)
+		if len(providerAttempts) == 0 {
+			failureReason := "No torrent providers available for this run"
+			if len(providerWarnings) > 0 {
+				failureReason = strings.Join(providerWarnings, "; ")
 			}
-			if isOfflineLikeError(err) {
-				goto searchRetry
-			}
-			h.App.Logger.Warn().Err(err).Str("title", animeTitle).Msg("anime-en-masse: Failed to search for torrents")
+			h.App.Logger.Warn().Str("title", animeTitle).Msg("anime-en-masse: Skipping due to missing providers")
 			animeEnMasseDownloaderMu.Lock()
 			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
 				Title:   animeTitle,
 				MediaId: mediaId,
-				Reason:  fmt.Sprintf("Torrent search failed: %v", err),
+				Reason:  failureReason,
 			})
 			animeEnMasseDownloaderMu.Unlock()
 			time.Sleep(2 * time.Second)
 			continue
 		}
 
-		if searchData == nil || len(searchData.Torrents) == 0 {
-			h.App.Logger.Warn().Str("title", animeTitle).Msg("anime-en-masse: No torrents found")
+		if isAdult {
+			h.App.Logger.Info().Str("title", animeTitle).Msg("anime-en-masse: Adult entry detected, preferring Nyaa Sukebei")
+		}
+
+		profile := torrentScoringProfile{preferDualAudio: !isAdult}
+
+		searchSucceeded := false
+		var searchData *torrent.SearchData
+		var providerUsed string
+		failureReasons := append([]string{}, providerWarnings...)
+
+	providerLoop:
+		for _, providerID := range providerAttempts {
+			h.App.Logger.Debug().
+				Str("title", animeTitle).
+				Str("provider", providerID).
+				Msg("anime-en-masse: Searching provider")
+		searchRetry:
+			searchData, err = h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
+				Provider:      providerID,
+				Type:          torrent.AnimeSearchTypeSmart,
+				Media:         media,
+				Query:         "",
+				Batch:         true,
+				EpisodeNumber: 0,
+				BestReleases:  true,
+				Resolution:    "",
+			})
+			if err != nil {
+				if handleOfflineError(err, i, "searching") {
+					return
+				}
+				if isOfflineLikeError(err) {
+					goto searchRetry
+				}
+				reason := fmt.Sprintf("Search failed via %s: %v", formatProviderLabel(providerID), err)
+				failureReasons = append(failureReasons, reason)
+				h.App.Logger.Warn().Err(err).Str("title", animeTitle).Str("provider", providerID).Msg("anime-en-masse: Failed to search for torrents")
+				continue providerLoop
+			}
+
+			if searchData == nil || len(searchData.Torrents) == 0 {
+				reason := fmt.Sprintf("No torrents found via %s", formatProviderLabel(providerID))
+				failureReasons = append(failureReasons, reason)
+				h.App.Logger.Warn().Str("title", animeTitle).Str("provider", providerID).Msg("anime-en-masse: No torrents found")
+				continue providerLoop
+			}
+
+			providerUsed = providerID
+			searchSucceeded = true
+			break providerLoop
+		}
+
+		if !searchSucceeded {
+			failureSummary := strings.Join(failureReasons, "; ")
+			if failureSummary == "" {
+				failureSummary = "No torrents found via configured providers"
+			}
 			animeEnMasseDownloaderMu.Lock()
 			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
 				Title:   animeTitle,
 				MediaId: mediaId,
-				Reason:  "No torrents found",
+				Reason:  failureSummary,
 			})
 			animeEnMasseDownloaderMu.Unlock()
 			time.Sleep(2 * time.Second)
@@ -808,14 +914,20 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		}
 
 		// Step 5: Find the best torrent
-		bestTorrent := findBestTorrent(searchData.Torrents)
+		bestTorrent := findBestTorrent(searchData.Torrents, profile)
 		if bestTorrent == nil {
+			maxSeeders := 0
+			for _, t := range searchData.Torrents {
+				if t.Seeders > maxSeeders {
+					maxSeeders = t.Seeders
+				}
+			}
 			h.App.Logger.Warn().Str("title", animeTitle).Msg("anime-en-masse: No suitable torrents found (insufficient seeders)")
 			animeEnMasseDownloaderMu.Lock()
 			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
 				Title:   animeTitle,
 				MediaId: mediaId,
-				Reason:  fmt.Sprintf("No torrents with >%d seeders found", MinSeeders-1),
+				Reason:  fmt.Sprintf("Not enough seeders (need ≥%d, max found %d)", MinSeeders, maxSeeders),
 			})
 			animeEnMasseDownloaderMu.Unlock()
 			time.Sleep(2 * time.Second)
@@ -839,14 +951,14 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		}
 
 		// Get the magnet link
-		providerExtension, ok := h.App.TorrentRepository.GetAnimeProviderExtension(provider)
+		providerExtension, ok := h.App.TorrentRepository.GetAnimeProviderExtension(providerUsed)
 		if !ok {
 			h.App.Logger.Warn().Str("title", animeTitle).Msg("anime-en-masse: Provider extension not found")
 			animeEnMasseDownloaderMu.Lock()
 			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
 				Title:   animeTitle,
 				MediaId: mediaId,
-				Reason:  "Provider extension not found",
+				Reason:  fmt.Sprintf("Provider extension '%s' not found", formatProviderLabel(providerUsed)),
 			})
 			animeEnMasseDownloaderMu.Unlock()
 			time.Sleep(2 * time.Second)
