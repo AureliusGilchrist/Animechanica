@@ -32,6 +32,7 @@ export interface AnimeEnMasseDownloaderStatus {
     processedAnime: ProcessedAnimeInfo[]
     failedAnime: FailedAnimeInfo[]
     skippedAnime: SkippedAnimeInfo[]
+    indexFailedAnime: Array<{ mediaId: number, reason: string }>
     downloadedCount: number
     filePath: string
     provider: string

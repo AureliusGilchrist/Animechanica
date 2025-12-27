@@ -34,7 +34,7 @@ type AnilistAnimeEntry struct {
 }
 
 func sanitizeDirectoryName(input string) string {
-	re := regexp.MustCompile(`"/\\|\x00-\x1F` + "`")
+	re := regexp.MustCompile(`[/\\|\x00-\x1F.!` + "`" + `]`)
 	sanitized := re.ReplaceAllString(input, " ")
 	sanitized = strings.Trim(sanitized, " .")
 	if sanitized == "" {
@@ -88,10 +88,10 @@ type IndexFailedAnimeInfo struct {
 var (
 	animeEnMasseDownloaderMu     sync.Mutex
 	animeEnMasseDownloaderStatus = &AnimeEnMasseDownloaderStatus{
-		IsRunning:      false,
-		ProcessedAnime: []ProcessedAnimeInfo{},
-		FailedAnime:    []FailedAnimeInfo{},
-		SkippedAnime:   []SkippedAnimeInfo{},
+		IsRunning:        false,
+		ProcessedAnime:   []ProcessedAnimeInfo{},
+		FailedAnime:      []FailedAnimeInfo{},
+		SkippedAnime:     []SkippedAnimeInfo{},
 		IndexFailedAnime: []IndexFailedAnimeInfo{},
 	}
 	animeEnMasseDownloaderCancelCh chan struct{}
@@ -125,6 +125,9 @@ func (h *Handler) HandleGetAnimeEnMasseDownloaderStatus(c echo.Context) error {
 		}
 		if len(savedState.SkippedAnimeJSON) > 0 {
 			_ = json.Unmarshal(savedState.SkippedAnimeJSON, &animeEnMasseDownloaderStatus.SkippedAnime)
+		}
+		if len(savedState.IndexFailedJSON) > 0 {
+			_ = json.Unmarshal(savedState.IndexFailedJSON, &animeEnMasseDownloaderStatus.IndexFailedAnime)
 		}
 	} else {
 		animeEnMasseDownloaderStatus.CanResume = false
@@ -212,6 +215,7 @@ func (h *Handler) HandleStartAnimeEnMasseDownloader(c echo.Context) error {
 	var skippedAnime []SkippedAnimeInfo
 	var downloadedCount int
 	var baseDestination string
+	var indexFailedAnime []IndexFailedAnimeInfo
 
 	// Check if we should resume from saved state
 	if b.Resume {
@@ -235,6 +239,9 @@ func (h *Handler) HandleStartAnimeEnMasseDownloader(c echo.Context) error {
 		}
 		if len(savedState.SkippedAnimeJSON) > 0 {
 			_ = json.Unmarshal(savedState.SkippedAnimeJSON, &skippedAnime)
+		}
+		if len(savedState.IndexFailedJSON) > 0 {
+			_ = json.Unmarshal(savedState.IndexFailedJSON, &indexFailedAnime)
 		}
 	} else {
 		baseDestination = b.Destination
@@ -273,7 +280,7 @@ func (h *Handler) HandleStartAnimeEnMasseDownloader(c echo.Context) error {
 	}
 
 	// Start the downloader in a goroutine
-	go h.runAnimeEnMasseDownloader(animeIds, b.Provider, b.FilePath, baseDestination, startIndex, processedAnime, failedAnime, skippedAnime, downloadedCount)
+	go h.runAnimeEnMasseDownloader(animeIds, b.Provider, b.FilePath, baseDestination, startIndex, processedAnime, failedAnime, skippedAnime, indexFailedAnime, downloadedCount)
 
 	return h.RespondWithData(c, true)
 }
@@ -323,10 +330,11 @@ func (h *Handler) HandleResetAnimeEnMasseDownloader(c echo.Context) error {
 	_ = h.App.Database.DeleteAnimeEnMasseDownloaderState()
 
 	animeEnMasseDownloaderStatus = &AnimeEnMasseDownloaderStatus{
-		IsRunning:      false,
-		ProcessedAnime: []ProcessedAnimeInfo{},
-		FailedAnime:    []FailedAnimeInfo{},
-		SkippedAnime:   []SkippedAnimeInfo{},
+		IsRunning:        false,
+		ProcessedAnime:   []ProcessedAnimeInfo{},
+		FailedAnime:      []FailedAnimeInfo{},
+		SkippedAnime:     []SkippedAnimeInfo{},
+		IndexFailedAnime: []IndexFailedAnimeInfo{},
 	}
 
 	return h.RespondWithData(c, true)
@@ -341,6 +349,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 	processedAnime []ProcessedAnimeInfo,
 	failedAnime []FailedAnimeInfo,
 	skippedAnime []SkippedAnimeInfo,
+	indexFailedAnime []IndexFailedAnimeInfo,
 	downloadedCount int,
 ) {
 	if processedAnime == nil {
@@ -362,6 +371,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		ProcessedAnime:    processedAnime,
 		FailedAnime:       failedAnime,
 		SkippedAnime:      skippedAnime,
+		IndexFailedAnime:  indexFailedAnime,
 		DownloadedCount:   downloadedCount,
 		FilePath:          filePath,
 		Provider:          provider,
@@ -377,6 +387,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		processedJSON, _ := json.Marshal(animeEnMasseDownloaderStatus.ProcessedAnime)
 		failedJSON, _ := json.Marshal(animeEnMasseDownloaderStatus.FailedAnime)
 		skippedJSON, _ := json.Marshal(animeEnMasseDownloaderStatus.SkippedAnime)
+		indexFailedJSON, _ := json.Marshal(animeEnMasseDownloaderStatus.IndexFailedAnime)
 		state := &models.AnimeEnMasseDownloaderState{
 			FilePath:           filePath,
 			Provider:           provider,
@@ -386,6 +397,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 			ProcessedAnimeJSON: processedJSON,
 			FailedAnimeJSON:    failedJSON,
 			SkippedAnimeJSON:   skippedJSON,
+			IndexFailedJSON:    indexFailedJSON,
 			DownloadedCount:    animeEnMasseDownloaderStatus.DownloadedCount,
 			IsActive:           isActive,
 		}
@@ -458,6 +470,15 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		animeEnMasseDownloaderMu.Lock()
 		defer animeEnMasseDownloaderMu.Unlock()
 		mutator(animeEnMasseDownloaderStatus)
+	}
+
+	addIndexFailure := func(mediaId int, reason string) {
+		updateStatus(func(status *AnimeEnMasseDownloaderStatus) {
+			status.IndexFailedAnime = append(status.IndexFailedAnime, IndexFailedAnimeInfo{
+				MediaId: mediaId,
+				Reason:  reason,
+			})
+		})
 	}
 
 	waitForOfflineMode := func(currentIndex int, resumePhase string) bool {
@@ -714,12 +735,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 				goto fetchRetry
 			}
 			h.App.Logger.Warn().Err(err).Int("mediaId", mediaId).Msg("anime-en-masse: Failed to fetch anime from AniList")
-			animeEnMasseDownloaderMu.Lock()
-			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
-				MediaId: mediaId,
-				Reason:  fmt.Sprintf("Failed to fetch from AniList: %v", err),
-			})
-			animeEnMasseDownloaderMu.Unlock()
+			addIndexFailure(mediaId, fmt.Sprintf("Failed to fetch from AniList: %v", err))
 			// Rate limit - respect AniList throttle (2 seconds between requests)
 			time.Sleep(2 * time.Second)
 			continue
@@ -727,12 +743,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 
 		if media == nil {
 			h.App.Logger.Warn().Int("mediaId", mediaId).Msg("anime-en-masse: Anime not found on AniList")
-			animeEnMasseDownloaderMu.Lock()
-			animeEnMasseDownloaderStatus.FailedAnime = append(animeEnMasseDownloaderStatus.FailedAnime, FailedAnimeInfo{
-				MediaId: mediaId,
-				Reason:  "Anime not found on AniList",
-			})
-			animeEnMasseDownloaderMu.Unlock()
+			addIndexFailure(mediaId, "Anime not found on AniList")
 			time.Sleep(2 * time.Second)
 			continue
 		}
