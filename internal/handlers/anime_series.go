@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"seanime/internal/api/anilist"
+	"seanime/internal/database/db_bridge"
 	"seanime/internal/library/anime"
 
 	"github.com/labstack/echo/v4"
@@ -14,8 +14,14 @@ import (
 
 type SeriesEntry struct {
 	Media          *anilist.CompleteAnime `json:"media"`
-	DownloadInfo   *anime.DownloadInfo    `json:"downloadInfo"`
+	DownloadInfo   *DownloadInfo         `json:"downloadInfo"`
 	LibraryData    *SeriesLibraryData     `json:"libraryData,omitempty"`
+}
+
+type DownloadInfo struct {
+	EpisodeCount   int `json:"episodeCount"`
+	Downloaded     int `json:"downloaded"`
+	NotDownloaded  int `json:"notDownloaded"`
 }
 
 type SeriesLibraryData struct {
@@ -56,7 +62,7 @@ func (h *Handler) HandleGetAllSeries(c echo.Context) error {
 	firstEntries := h.findFirstEntriesForAllFranchises(c.Request().Context(), allMediaMap)
 
 	// Get local files for library data
-	lfs, _, err := h.App.Database.GetLocalFiles()
+	lfs, _, err := db_bridge.GetLocalFiles(h.App.Database)
 	if err != nil {
 		h.App.Logger.Warn().Err(err).Msg("anime series: Failed to get local files")
 	}
@@ -87,17 +93,26 @@ func (h *Handler) HandleGetAllSeries(c echo.Context) error {
 			}
 		}
 
-		// Get download info
-		downloadInfo, err := anime.NewDownloadInfo(&anime.NewDownloadInfoOptions{
-			Db:                h.App.Database,
-			MediaId:           media.GetID(),
-			Enhanced:          false,
-			AnimeCollection:   nil, // We don't need the full collection for download info
-			SilencedMediaIds:  nil,
-			DownloadedEpisodes: nil,
+		// Get download info using the existing EntryDownloadInfo
+		downloadInfo, err := anime.NewEntryDownloadInfo(&anime.NewEntryDownloadInfoOptions{
+			LocalFiles:          nil, // We don't need local files for basic download info
+			AnimeMetadata:       nil, // We don't have metadata provider here
+			Media:               media.ToBaseAnime(),
+			Progress:            nil, // We don't have progress info
+			Status:              nil, // We don't have status info
+			MetadataProviderRef: nil, // We don't have metadata provider here
 		})
 		if err == nil && downloadInfo != nil {
-			entry.DownloadInfo = downloadInfo
+			// Calculate basic stats from episodes
+			totalEpisodes := len(downloadInfo.EpisodesToDownload)
+			downloaded := 0
+			notDownloaded := totalEpisodes
+			
+			entry.DownloadInfo = &DownloadInfo{
+				EpisodeCount:   totalEpisodes,
+				Downloaded:     downloaded,
+				NotDownloaded:  notDownloaded,
+			}
 		}
 
 		seriesEntries = append(seriesEntries, entry)

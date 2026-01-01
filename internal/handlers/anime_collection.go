@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"sort"
 	"time"
 
 	"seanime/internal/api/anilist"
@@ -14,7 +13,6 @@ import (
 	"seanime/internal/util/result"
 
 	"github.com/labstack/echo/v4"
-	"github.com/samber/lo"
 )
 
 // HandleGetLibraryCollection
