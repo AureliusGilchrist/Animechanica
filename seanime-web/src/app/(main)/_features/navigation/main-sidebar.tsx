@@ -35,7 +35,7 @@ import { useAtom, useSetAtom } from "jotai"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import React from "react"
-import { BiChevronRight, BiExtension, BiLogIn, BiLogOut } from "react-icons/bi"
+import { BiChevronRight, BiCollection, BiExtension, BiLogIn, BiLogOut } from "react-icons/bi"
 import { FiLogIn, FiSearch } from "react-icons/fi"
 import { HiOutlineServerStack } from "react-icons/hi2"
 import { IoCloudOfflineOutline, IoHomeOutline } from "react-icons/io5"
@@ -174,6 +174,13 @@ export function MainSidebar() {
             name: "My lists",
             href: "/lists",
             isCurrent: pathname === "/lists",
+        },
+        {
+            id: "series",
+            iconType: BiCollection,
+            name: "All Series",
+            href: "/series",
+            isCurrent: pathname === "/series",
         },
         {
             id: "discover",

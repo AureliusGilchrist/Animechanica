@@ -255,6 +255,8 @@ func InitRoutes(app *core.App, e *echo.Echo) {
 
 	v1Library.POST("/unknown-media", h.HandleAddUnknownMedia)
 
+	v1Library.GET("/series", h.HandleGetAllSeries)
+
 	//
 	// Library Explorer
 	//

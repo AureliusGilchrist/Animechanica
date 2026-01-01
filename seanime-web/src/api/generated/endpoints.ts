@@ -183,6 +183,17 @@ export const API_ENDPOINTS = {
             methods: ["POST"],
             endpoint: "/api/v1/library/unknown-media",
         },
+        /**
+         *  @description
+         *  Route returns all series (first entries of each franchise)
+         *  This returns the first entry of every anime franchise in the user's collection.
+         *  It uses AniList relations to find the earliest related entry.
+         */
+        GetAllSeries: {
+            key: "ANIME-COLLECTION-get-all-series",
+            methods: ["GET"],
+            endpoint: "/api/v1/library/series",
+        },
     },
     ANIME_ENTRIES: {
         /**
