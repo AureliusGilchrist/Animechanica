@@ -20,6 +20,7 @@ import { VIDEOCORE_PREVIEW_CAPTURE_INTERVAL_SECONDS, VIDEOCORE_PREVIEW_THUMBNAIL
 import {
     vc_autoSkipOPEDAtom,
     vc_bingeModeAtom,
+    vc_bingeModeAutoAdvanceAtom,
     vc_highlightOPEDChaptersAtom,
     vc_showChapterMarkersAtom,
     vc_skipEndingAtom,
@@ -71,9 +72,11 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
     const skipIntro = useAtomValue(vc_skipIntroAtom)
     const skipEnding = useAtomValue(vc_skipEndingAtom)
     const flashAction = useSetAtom(vc_doFlashAction)
+    const setBingeModeAutoAdvance = useSetAtom(vc_bingeModeAutoAdvanceAtom)
     const [skipOpeningTime, setSkipOpeningTime] = useAtom(vc_skipOpeningTime)
     const [skipEndingTime, setSkipEndingTime] = useAtom(vc_skipEndingTime)
     const [restoreProgressTo, setRestoreProgressTo] = useAtom(vc_lastKnownProgress)
+    const bingeAutoAdvanceTriggeredRef = React.useRef(false)
 
     const bufferedPercentage = React.useMemo(() => {
         return (buffered / duration) * 100
@@ -169,11 +172,16 @@ export function VideoCoreTimeRange(props: VideoCoreTimeRangeProps) {
                 } else {
                     flashAction({ message: "Skipped ED", duration: 1000 })
                 }
+                if (bingeMode && !bingeAutoAdvanceTriggeredRef.current) {
+                    bingeAutoAdvanceTriggeredRef.current = true
+                    setBingeModeAutoAdvance(Date.now())
+                }
             } else {
                 setSkipEndingTime(opEdChapters.ending.end)
             }
         } else {
             setSkipEndingTime(0)
+            bingeAutoAdvanceTriggeredRef.current = false
         }
 
     }, [currentTime, autoSkipIntroOutro, skipIntro, skipEnding, bingeMode, opEdChapters, duration, restoreProgressTo])

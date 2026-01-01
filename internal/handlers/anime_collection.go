@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"sort"
+	"time"
+
 	"seanime/internal/api/anilist"
 	"seanime/internal/customsource"
 	"seanime/internal/database/db_bridge"
@@ -9,9 +12,9 @@ import (
 	"seanime/internal/torrentstream"
 	"seanime/internal/util"
 	"seanime/internal/util/result"
-	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
 )
 
 // HandleGetLibraryCollection

@@ -92,7 +92,9 @@ export const vc_bingeModeAtom = atomWithStorage("sea-video-core-binge-mode", fal
 export const vc_skipIntroAtom = atomWithStorage("sea-video-core-skip-intro", false, undefined, { getOnInit: true })
 // Skip ending/outro automatically
 export const vc_skipEndingAtom = atomWithStorage("sea-video-core-skip-ending", false, undefined, { getOnInit: true })
-// Skip filler episodes automatically (general)
 export const vc_skipFillerAtom = atomWithStorage("sea-video-core-skip-filler", false, undefined, { getOnInit: true })
 // Additional binge-mode-only filler skipping
 export const vc_bingeSkipFillerAtom = atomWithStorage("sea-video-core-binge-skip-filler", false, undefined, { getOnInit: true })
+
+// Internal signal to jump to the next episode immediately after a binge-mode ED skip
+export const vc_bingeModeAutoAdvanceAtom = atom<number | null>(null)

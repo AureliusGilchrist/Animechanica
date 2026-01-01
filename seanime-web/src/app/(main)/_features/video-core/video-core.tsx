@@ -40,6 +40,7 @@ import {
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
     vc_bingeModeAtom,
+    vc_bingeModeAutoAdvanceAtom,
     vc_skipEndingAtom,
     vc_settings,
     vc_storedMutedAtom,
@@ -263,7 +264,10 @@ export function VideoCore(props: VideoCoreProps) {
     useVideoCoreBindings(state.playbackInfo)
     useVideoCorePlaylistSetup()
 
-    const videoCompletedRef = useRef(false)
+    const videoCompletedRef = React.useRef(false)
+    const lastBingeModeAutoAdvanceRef = React.useRef<number | null>(null)
+    const pendingBingeAdvanceRef = React.useRef(false)
+    const shouldRestoreFullscreenRef = React.useRef(false)
     const currentPlaybackRef = useRef<string | null>(null)
 
     const [, setContainerElement] = useAtom(vc_containerElement)
@@ -286,6 +290,7 @@ export function VideoCore(props: VideoCoreProps) {
     const [buffering, setBuffering] = useAtom(vc_buffering)
     const duration = useAtomValue(vc_duration)
     const fullscreen = useAtomValue(vc_isFullscreen)
+    const bingeModeAutoAdvance = useAtomValue(vc_bingeModeAutoAdvanceAtom)
     const paused = useAtomValue(vc_paused)
     const readyState = useAtomValue(vc_readyState)
     const beautifyImage = useAtomValue(vc_beautifyImageAtom)
@@ -593,6 +598,16 @@ export function VideoCore(props: VideoCoreProps) {
                 episodeTitle: state.playbackInfo.episode.episodeTitle || undefined,
             })
         }
+
+        if (pendingBingeAdvanceRef.current) {
+            pendingBingeAdvanceRef.current = false
+        }
+
+        if (shouldRestoreFullscreenRef.current && fullscreenManager) {
+            fullscreenManager.enterFullscreen?.().catch(() => {
+            })
+            shouldRestoreFullscreenRef.current = false
+        }
     }
 
     const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -615,7 +630,8 @@ export function VideoCore(props: VideoCoreProps) {
         onEnded?.()
         // Auto-next if autoNext is on OR if bingeMode is on
         // bingeMode automatically skips ED and moves to next episode
-        if (autoNext || bingeMode) {
+        const shouldAdvance = autoNext || (bingeMode && !pendingBingeAdvanceRef.current)
+        if (shouldAdvance) {
             // videoRef?.current?.pause()
             playEpisode("next")
         }
@@ -923,8 +939,16 @@ export function VideoCore(props: VideoCoreProps) {
         if (autoPlay) {
             videoRef.current?.play()
         }
-
     }, [anime4kManager, anime4kOption, restoreProgressTo, autoPlay])
+
+    React.useEffect(() => {
+        if (!bingeModeAutoAdvance || bingeModeAutoAdvance === lastBingeModeAutoAdvanceRef.current) return
+        lastBingeModeAutoAdvanceRef.current = bingeModeAutoAdvance
+        if (!bingeMode) return
+        pendingBingeAdvanceRef.current = true
+        shouldRestoreFullscreenRef.current = fullscreen
+        playEpisode("next")
+    }, [bingeModeAutoAdvance, bingeMode, fullscreen, playEpisode])
 
     return (
         <>

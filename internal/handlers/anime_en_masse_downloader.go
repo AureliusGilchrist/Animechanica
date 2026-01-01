@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"seanime/internal/api/anilist"
 	"seanime/internal/database/db_bridge"
 	"seanime/internal/database/models"
 	"seanime/internal/events"
@@ -519,6 +520,116 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		return false
 	}
 
+	buildSeasonPart := func(media *anilist.BaseAnime) string {
+		seasonPart := ""
+		if media.GetSeason() != nil && media.GetStartDate().GetYear() != nil && *media.GetStartDate().GetYear() > 0 {
+			seasonValue := string(*media.GetSeason())
+			if seasonValue != "" {
+				seasonName := strings.ToLower(seasonValue)
+				if len(seasonName) > 1 {
+					seasonName = strings.ToUpper(seasonName[:1]) + seasonName[1:]
+				} else {
+					seasonName = strings.ToUpper(seasonName)
+				}
+				seasonPart = fmt.Sprintf(" %s %d", seasonName, *media.GetStartDate().GetYear())
+			}
+		}
+		return seasonPart
+	}
+
+	buildBatchSearchQuery := func(media *anilist.BaseAnime) string {
+		title := media.GetRomajiTitleSafe()
+		if media.GetTitle().GetEnglish() != nil && *media.GetTitle().GetEnglish() != "" {
+			title = *media.GetTitle().GetEnglish()
+		}
+
+		seasonPart := buildSeasonPart(media)
+
+		return fmt.Sprintf("%s%s batch complete", title, seasonPart)
+	}
+
+	buildSukebeiSimpleQueries := func(media *anilist.BaseAnime) []string {
+		seasonPart := buildSeasonPart(media)
+		titles := media.GetAllTitlesDeref()
+		if len(titles) == 0 {
+			if fallback := media.GetRomajiTitleSafe(); fallback != "" {
+				titles = append(titles, fallback)
+			}
+		}
+		if media.GetTitle().GetEnglish() != nil && *media.GetTitle().GetEnglish() != "" {
+			titles = append(titles, *media.GetTitle().GetEnglish())
+		}
+		titles = append(titles, media.GetSynonymsContainingSeason()...)
+
+		seen := make(map[string]struct{})
+		queries := make([]string, 0, len(titles)*4)
+		addQuery := func(q string) {
+			q = strings.TrimSpace(q)
+			if q == "" {
+				return
+			}
+			lower := strings.ToLower(q)
+			if _, ok := seen[lower]; ok {
+				return
+			}
+			seen[lower] = struct{}{}
+			queries = append(queries, q)
+		}
+
+		for _, raw := range titles {
+			base := strings.TrimSpace(raw)
+			if base == "" {
+				continue
+			}
+			addQuery(base)
+			addQuery(fmt.Sprintf("%s batch", base))
+			addQuery(fmt.Sprintf("%s complete", base))
+			addQuery(fmt.Sprintf("%s uncensored", base))
+			if seasonPart != "" {
+				addQuery(fmt.Sprintf("%s%s", base, seasonPart))
+				addQuery(fmt.Sprintf("%s%s batch", base, seasonPart))
+				addQuery(fmt.Sprintf("%s%s complete", base, seasonPart))
+			}
+		}
+
+		addQuery(buildBatchSearchQuery(media))
+
+		return queries
+	}
+
+	isBatchTorrent := func(t *hibiketorrent.AnimeTorrent) bool {
+		if t == nil {
+			return false
+		}
+		if t.IsBatch || t.IsBestRelease {
+			return true
+		}
+		name := strings.ToLower(t.Name)
+		batchKeywords := []string{"batch", "complete", "full season", "全集", "全話", "全卷"}
+		for _, kw := range batchKeywords {
+			if strings.Contains(name, kw) {
+				return true
+			}
+		}
+		return false
+	}
+
+	filterBatchTorrents := func(torrents []*hibiketorrent.AnimeTorrent) []*hibiketorrent.AnimeTorrent {
+		if len(torrents) == 0 {
+			return torrents
+		}
+		filtered := make([]*hibiketorrent.AnimeTorrent, 0, len(torrents))
+		for _, t := range torrents {
+			if isBatchTorrent(t) {
+				filtered = append(filtered, t)
+			}
+		}
+		if len(filtered) == 0 {
+			return torrents
+		}
+		return filtered
+	}
+
 	isOfflineLikeError := func(err error) bool {
 		if err == nil {
 			return false
@@ -849,6 +960,7 @@ func (h *Handler) runAnimeEnMasseDownloader(
 		}
 
 		profile := torrentScoringProfile{preferDualAudio: !isAdult}
+		batchQuery := buildBatchSearchQuery(media)
 
 		searchSucceeded := false
 		var searchData *torrent.SearchData
@@ -861,40 +973,146 @@ func (h *Handler) runAnimeEnMasseDownloader(
 				Str("title", animeTitle).
 				Str("provider", providerID).
 				Msg("anime-en-masse: Searching provider")
-		searchRetry:
-			searchData, err = h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
-				Provider:      providerID,
-				Type:          torrent.AnimeSearchTypeSmart,
-				Media:         media,
-				Query:         "",
-				Batch:         true,
-				EpisodeNumber: 0,
-				BestReleases:  true,
-				Resolution:    "",
+
+			providerSupportsSmart := true
+			if ext, ok := h.App.TorrentRepository.GetAnimeProviderExtension(providerID); ok {
+				settings := ext.GetProvider().GetSettings()
+				providerSupportsSmart = settings.CanSmartSearch
+			}
+
+			if !providerSupportsSmart {
+				h.App.Logger.Debug().
+					Str("title", animeTitle).
+					Str("provider", providerID).
+					Msg("anime-en-masse: Provider does not support smart search, using simple batch query")
+			}
+
+			type searchAttempt struct {
+				label string
+				exec  func() (*torrent.SearchData, error)
+			}
+
+			attempts := make([]searchAttempt, 0, 2)
+			if providerSupportsSmart {
+				attempts = append(attempts, searchAttempt{
+					label: "smart",
+					exec: func() (*torrent.SearchData, error) {
+						return h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
+							Provider:      providerID,
+							Type:          torrent.AnimeSearchTypeSmart,
+							Media:         media,
+							Query:         "",
+							Batch:         true,
+							EpisodeNumber: 0,
+							BestReleases:  true,
+							Resolution:    "",
+						})
+					},
+				})
+			}
+
+			attempts = append(attempts, searchAttempt{
+				label: "simple",
+				exec: func() (*torrent.SearchData, error) {
+					data, err := h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
+						Provider: providerID,
+						Type:     torrent.AnimeSearchTypeSimple,
+						Media:    media,
+						Query:    batchQuery,
+					})
+					if err != nil {
+						return nil, err
+					}
+					if data != nil {
+						data.Torrents = filterBatchTorrents(data.Torrents)
+					}
+					return data, nil
+				},
 			})
-			if err != nil {
-				if handleOfflineError(err, i, "searching") {
+
+			if providerID == adultAnimeProviderID && !providerSupportsSmart {
+				for _, query := range buildSukebeiSimpleQueries(media) {
+					q := query
+					attempts = append(attempts, searchAttempt{
+						label: fmt.Sprintf("sukebei-simple (%s)", q),
+						exec: func() (*torrent.SearchData, error) {
+							data, err := h.App.TorrentRepository.SearchAnime(ctx, torrent.AnimeSearchOptions{
+								Provider: providerID,
+								Type:     torrent.AnimeSearchTypeSimple,
+								Media:    media,
+								Query:    q,
+							})
+							if err != nil {
+								return nil, err
+							}
+							if data != nil {
+								data.Torrents = filterBatchTorrents(data.Torrents)
+							}
+							return data, nil
+						},
+					})
+				}
+			}
+
+			trySearch := func(exec func() (*torrent.SearchData, error)) (*torrent.SearchData, error, bool) {
+			searchRetry:
+				data, err := exec()
+				if err != nil {
+					if handleOfflineError(err, i, "searching") {
+						return nil, err, true
+					}
+					if isOfflineLikeError(err) {
+						goto searchRetry
+					}
+				}
+				return data, err, false
+			}
+
+			for _, attempt := range attempts {
+				h.App.Logger.Debug().
+					Str("title", animeTitle).
+					Str("provider", providerID).
+					Str("mode", attempt.label).
+					Msg("anime-en-masse: Executing torrent search")
+
+				data, attemptErr, aborted := trySearch(attempt.exec)
+				if aborted {
 					return
 				}
-				if isOfflineLikeError(err) {
-					goto searchRetry
+				displayMode := attempt.label
+				if len(displayMode) > 1 {
+					displayMode = strings.ToUpper(displayMode[:1]) + displayMode[1:]
+				} else {
+					displayMode = strings.ToUpper(displayMode)
 				}
-				reason := fmt.Sprintf("Search failed via %s: %v", formatProviderLabel(providerID), err)
-				failureReasons = append(failureReasons, reason)
-				h.App.Logger.Warn().Err(err).Str("title", animeTitle).Str("provider", providerID).Msg("anime-en-masse: Failed to search for torrents")
-				continue providerLoop
-			}
 
-			if searchData == nil || len(searchData.Torrents) == 0 {
-				reason := fmt.Sprintf("No torrents found via %s", formatProviderLabel(providerID))
-				failureReasons = append(failureReasons, reason)
-				h.App.Logger.Warn().Str("title", animeTitle).Str("provider", providerID).Msg("anime-en-masse: No torrents found")
-				continue providerLoop
-			}
+				if attemptErr != nil {
+					reason := fmt.Sprintf("%s search failed via %s: %v", displayMode, formatProviderLabel(providerID), attemptErr)
+					failureReasons = append(failureReasons, reason)
+					h.App.Logger.Warn().Err(attemptErr).
+						Str("title", animeTitle).
+						Str("provider", providerID).
+						Str("mode", attempt.label).
+						Msg("anime-en-masse: Torrent search failed")
+					continue
+				}
 
-			providerUsed = providerID
-			searchSucceeded = true
-			break providerLoop
+				if data == nil || len(data.Torrents) == 0 {
+					reason := fmt.Sprintf("No torrents found via %s (%s search)", formatProviderLabel(providerID), strings.ToLower(displayMode))
+					failureReasons = append(failureReasons, reason)
+					h.App.Logger.Warn().
+						Str("title", animeTitle).
+						Str("provider", providerID).
+						Str("mode", attempt.label).
+						Msg("anime-en-masse: No torrents found")
+					continue
+				}
+
+				searchData = data
+				providerUsed = providerID
+				searchSucceeded = true
+				break providerLoop
+			}
 		}
 
 		if !searchSucceeded {

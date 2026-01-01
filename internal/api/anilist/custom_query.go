@@ -96,9 +96,9 @@ func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data int
 		rlRetryAfterStr := resp.Header.Get("Retry-After")
 		rlRetryAfter, err := strconv.Atoi(rlRetryAfterStr)
 		if err == nil {
-			logger.Warn().Msgf("anilist: Rate limited, retrying in %d seconds", rlRetryAfter+1)
+			logger.Warn().Msgf("Rate limited, retrying in %d seconds", rlRetryAfter+1)
 			if time.Since(sentRateLimitWarningTime) > 10*time.Second {
-				events.GlobalWSEventManager.SendEvent(events.WarningToast, "anilist: Rate limited, retrying in "+strconv.Itoa(rlRetryAfter+1)+" seconds")
+				events.GlobalWSEventManager.SendEvent(events.WarningToast, "Rate limited, retrying in "+strconv.Itoa(rlRetryAfter+1)+" seconds")
 				sentRateLimitWarningTime = time.Now()
 			}
 			select {
